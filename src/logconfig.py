@@ -34,6 +34,7 @@ class CustomColoredFormatter(logging.Formatter):
 
 class UvicornFilter(logging.Filter):
   """Filter to hide uvicorn startup/shutdown messages but keep WebSocket logs"""
+
   def filter(self, record) -> bool:
     # Messages to filter out
     startup_messages = [
@@ -85,19 +86,19 @@ LOG_CONFIG = {
         },
     },
     "loggers": {
-    # Your application's logger
+        # Your application's logger
         "psyche": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
-    # Uvicorn's access logger
+        # Uvicorn's access logger
         "uvicorn.access": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
-    # Uvicorn's error logger
+        # Uvicorn's error logger
         "uvicorn.error": {
             "handlers": ["console", "file"],
             "level": "INFO",
@@ -108,7 +109,7 @@ LOG_CONFIG = {
     "root": {
         "handlers": ["console", "file"],
         "level":
-        "WARNING",    # Set to WARNING to silence noisy INFO logs from other libs
+        "WARNING",  # Set to WARNING to silence noisy INFO logs from other libs
     }
 }
 
