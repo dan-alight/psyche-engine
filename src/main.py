@@ -3,23 +3,44 @@ from contextlib import asynccontextmanager
 import logging
 from logging.handlers import RotatingFileHandler
 import time
+import datetime
 import uvicorn
 from pydantic import BaseModel
 from uvicorn.logging import DefaultFormatter
-from fastapi import FastAPI, WebSocket, Request
+from fastapi import FastAPI, WebSocket, Request, HTTPException, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import select, delete, update
+from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect, WebSocketState
-from db import create_db_and_tables, SessionDep
+from db import create_db_and_tables, AsyncSessionDep, AiProvider, ApiKey
 from logconfig import setup_logging
 
 setup_logging()
 logger = logging.getLogger("psyche")
 
-# --- Pydantic Models for API Validation ---
+# --- Pydantic Models ---
 
-class ApiKeyRequest(BaseModel):
-  api_key: str
+class ApiKeyCreate(BaseModel):
+  key_value: str
+  provider: AiProvider
+  name: str
 
-# --- FastAPI Application (runs in the main process) ---
+class ApiKeyRead(BaseModel):
+  id: int
+  key_value: str
+  provider: AiProvider
+  name: str
+  active: bool
+
+  class Config:
+    from_attributes = True
+
+class ApiKeyUpdate(BaseModel):
+  key_value: str
+  new_name: str | None
+  new_active: bool | None
+
+# --- FastAPI Application ---
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,26 +50,96 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
-async def root():
-  """A simple root endpoint."""
-  return {"message": "Welcome to the Async AI Inference Service!"}
+origins = ["http://localhost:5173"]
 
-@app.post("/add-api-key")
-def add_api_key(request: ApiKeyRequest, db: SessionDep):
-  """Endpoint to add a new API key."""
-  api_key = request.api_key
-  if not api_key:
-    return {"status": "error", "message": "API key value is required"}
+app.add_middleware(CORSMiddleware, allow_origins=origins)
 
-  db.add({"key_value": api_key})
-  db.commit()
-  logger.info(f"Added API key: {api_key}")
+@app.post("/api-key", response_model=ApiKeyRead)
+async def create_api_key(request: ApiKeyCreate, db: AsyncSessionDep):
+  """Create a new API key."""
+  api_key = ApiKey(**request.model_dump())
 
-  return {"status": "ok", "message": "API key added successfully"}
+  try:
+    db.add(api_key)
+    await db.commit()
+    await db.refresh(api_key)
+  except IntegrityError:
+    await db.rollback()
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="API key with this value or name already exists")
+
+  return api_key
+
+@app.delete("/api-key/{key_name}")
+async def delete_api_key(key_name: str, db: AsyncSessionDep):
+  """Delete an existing API key by its name from the URL path."""
+
+  stmt = delete(ApiKey).where(ApiKey.name == key_name)
+  result = await db.execute(stmt)
+
+  if result.rowcount == 0:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
+
+  await db.commit()
+
+  return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.put("/api-key", response_model=ApiKeyRead)
+async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
+  """
+  Update an API key's name or active status.
+
+  - The key to update is identified by its `key_value`.
+  - If `new_active` is set to `True`, any other key for the same provider
+    that is currently active will be deactivated to satisfy the unique
+    constraint. This is done atomically within the same transaction.
+  - Updating the name is subject to a unique constraint check.
+  """
+
+  get_stmt = select(ApiKey).where(
+      ApiKey.key_value == request.key_value).with_for_update()
+  result = await db.execute(get_stmt)
+  api_key_to_update = result.scalar_one_or_none()
+
+  if not api_key_to_update:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="API key with the given value not found.")
+
+  if request.new_active is True:
+    deactivate_stmt = (
+        update(ApiKey).where(
+            ApiKey.provider == api_key_to_update.provider,
+            ApiKey.active == True, ApiKey.id
+            != api_key_to_update.id).values(active=False))
+    await db.execute(deactivate_stmt)
+
+  if request.new_name is not None:
+    api_key_to_update.name = request.new_name
+  if request.new_active is not None:
+    api_key_to_update.active = request.new_active
+
+  try:
+    await db.commit()
+    await db.refresh(api_key_to_update)
+  except IntegrityError:
+    await db.rollback()
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="An API key with the new name already exists.")
+
+  return api_key_to_update
+
+@app.get("/api-keys", response_model=list[ApiKeyRead])
+async def get_api_keys(db: AsyncSessionDep):
+  result = await db.execute(select(ApiKey))
+  api_keys = result.scalars().all()
+  return api_keys
 
 @app.websocket("/chat")
-async def chat(websocket: WebSocket, db: SessionDep):
+async def chat(websocket: WebSocket, db: AsyncSessionDep):
   """WebSocket endpoint for real-time communication."""
   await websocket.accept()
   try:
@@ -58,13 +149,11 @@ async def chat(websocket: WebSocket, db: SessionDep):
       response = {"status": "ok", "echo": message}
       await websocket.send_text(json.dumps(response))
   except WebSocketDisconnect:
-    # Client disconnected normally - no need to close again
     pass
   except Exception as e:
-    # Check if websocket is still open before trying to close
     if websocket.client_state == WebSocketState.CONNECTED:
       await websocket.close(code=1000, reason=str(e))
-    print(f"WebSocket error: {e}")
+    logger.warning(f"WebSocket error: {e}")
 
 # --- Main application entrypoint ---
 
