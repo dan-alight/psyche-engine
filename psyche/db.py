@@ -42,6 +42,14 @@ class ApiKey(Base):
           postgresql_where=text('active = true'),
           sqlite_where=text('active = 1')), )
 
+class JournalEntry(Base):
+  __tablename__ = "journalentry"
+
+  id: Mapped[int] = mapped_column(primary_key=True)
+  content: Mapped[str] = mapped_column(String)
+  created_at: Mapped[datetime] = mapped_column(
+      DateTime, server_default=text("CURRENT_TIMESTAMP"))
+
 class Conversation(Base):
   __tablename__ = "conversation"
 

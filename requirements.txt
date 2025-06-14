@@ -1,4 +1,0 @@
-fastapi[standard]
-sqlalchemy
-colorama
-aiosqlite

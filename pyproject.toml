@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "psyche"
+version = "0.1.0"
+description = "Your FastAPI project"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "aiosqlite"
+]
+
+[project.optional-dependencies]
+dev = [
+    "yapf"    
+]
