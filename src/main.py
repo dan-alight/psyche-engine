@@ -9,6 +9,9 @@ from pydantic import BaseModel
 from uvicorn.logging import DefaultFormatter
 from fastapi import FastAPI, WebSocket, Request, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.exception_handlers import request_validation_exception_handler
 from sqlmodel import select, delete, update
 from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect, WebSocketState
@@ -37,8 +40,8 @@ class ApiKeyRead(BaseModel):
 
 class ApiKeyUpdate(BaseModel):
   key_value: str
-  new_name: str | None
-  new_active: bool | None
+  new_name: str | None = None
+  new_active: bool | None = None
 
 # --- FastAPI Application ---
 
@@ -52,7 +55,13 @@ app = FastAPI(lifespan=lifespan)
 
 origins = ["http://localhost:5173"]
 
-app.add_middleware(CORSMiddleware, allow_origins=origins)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.post("/api-key", response_model=ApiKeyRead)
 async def create_api_key(request: ApiKeyCreate, db: AsyncSessionDep):
@@ -71,11 +80,11 @@ async def create_api_key(request: ApiKeyCreate, db: AsyncSessionDep):
 
   return api_key
 
-@app.delete("/api-key/{key_name}")
-async def delete_api_key(key_name: str, db: AsyncSessionDep):
-  """Delete an existing API key by its name from the URL path."""
+@app.delete("/api-key/{key_value}")
+async def delete_api_key(key_value: str, db: AsyncSessionDep):
+  """Delete an existing API key by its key_value from the URL path."""
 
-  stmt = delete(ApiKey).where(ApiKey.name == key_name)
+  stmt = delete(ApiKey).where(ApiKey.key_value == key_value)
   result = await db.execute(stmt)
 
   if result.rowcount == 0:
@@ -154,6 +163,16 @@ async def chat(websocket: WebSocket, db: AsyncSessionDep):
     if websocket.client_state == WebSocketState.CONNECTED:
       await websocket.close(code=1000, reason=str(e))
     logger.warning(f"WebSocket error: {e}")
+
+@app.exception_handler(RequestValidationError)
+async def custom_validation_exception_handler(
+    request: Request, exc: RequestValidationError):
+  # Print/log the detailed errors
+  print("Validation error:", exc.errors())
+  print("Request body:", await request.body())
+
+  # Optionally customize the response
+  return await request_validation_exception_handler(request, exc)
 
 # --- Main application entrypoint ---
 
