@@ -10,7 +10,8 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "sqlalchemy",
-    "aiosqlite"
+    "aiosqlite",
+    "fastcrud"
 ]
 
 [project.optional-dependencies]

@@ -1,12 +1,10 @@
-from fastapi import APIRouter, FastAPI, WebSocket, Request, HTTPException, Response, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi.exception_handlers import request_validation_exception_handler
+from enum import Enum
+from fastapi import APIRouter, HTTPException, Response, status
+from fastcrud import FastCRUD, crud_router
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, update
 from pydantic import BaseModel
-from psyche.db import AiProvider, AsyncSessionDep, ApiKey
+from psyche.db import AiProvider, AsyncSessionDep, ApiKey, get_async_session
 
 # --- Pydantic Models ---
 
@@ -32,41 +30,18 @@ class ApiKeyUpdate(BaseModel):
 
 # --- Routes ---
 
-router = APIRouter()
+tags: list[str | Enum] = ["ApiKeys"]
 
-@router.post("/api-key", response_model=ApiKeyRead)
-async def create_api_key(request: ApiKeyCreate, db: AsyncSessionDep):
-  """Create a new API key."""
-  api_key = ApiKey(**request.model_dump())
+router = crud_router(
+    session=get_async_session,
+    model=ApiKey,
+    create_schema=ApiKeyCreate,
+    update_schema=ApiKeyUpdate,
+    path="/api-keys",
+    tags=tags,
+    included_methods=["create", "read_multi", "delete"])
 
-  try:
-    db.add(api_key)
-    await db.commit()
-    await db.refresh(api_key)
-  except IntegrityError:
-    await db.rollback()
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="API key with this value or name already exists")
-
-  return api_key
-
-@router.delete("/api-key/{key_value}")
-async def delete_api_key(key_value: str, db: AsyncSessionDep):
-  """Delete an existing API key by its key_value from the URL path."""
-
-  stmt = delete(ApiKey).where(ApiKey.key_value == key_value)
-  result = await db.execute(stmt)
-
-  if result.rowcount == 0:
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
-
-  await db.commit()
-
-  return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@router.put("/api-key", response_model=ApiKeyRead)
+@router.put("/api-keys", response_model=ApiKeyRead, tags=tags)
 async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
   """
   Update an API key's name or active status.
@@ -111,9 +86,3 @@ async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
         detail="An API key with the new name already exists.")
 
   return api_key_to_update
-
-@router.get("/api-keys", response_model=list[ApiKeyRead])
-async def get_api_keys(db: AsyncSessionDep):
-  result = await db.execute(select(ApiKey))
-  api_keys = result.scalars().all()
-  return api_keys
