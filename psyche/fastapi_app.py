@@ -30,7 +30,10 @@ app.add_middleware(
 )
 
 app.include_router(api_keys.router)
+# Order is important
+app.include_router(journal.stats_router)
 app.include_router(journal.router)
+
 
 @app.exception_handler(RequestValidationError)
 async def custom_validation_exception_handler(
