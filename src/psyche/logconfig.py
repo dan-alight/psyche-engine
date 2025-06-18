@@ -1,5 +1,8 @@
+import signal
 import logging
 import logging.config
+import logging.handlers
+from multiprocessing import Queue
 from colorama import Fore, Style, init
 
 class CustomColoredFormatter(logging.Formatter):
@@ -36,7 +39,6 @@ class UvicornFilter(logging.Filter):
   """Filter to hide uvicorn startup/shutdown messages but keep WebSocket logs"""
 
   def filter(self, record) -> bool:
-    # Messages to filter out
     startup_messages = [
         "Started server process", "Waiting for application startup",
         "Application startup complete", "Shutting down",
@@ -45,7 +47,6 @@ class UvicornFilter(logging.Filter):
     ]
     message = record.getMessage()
 
-    # Return False to filter out, True to keep
     return not any(startup_msg in message for startup_msg in startup_messages)
 
 LOG_CONFIG = {
@@ -86,26 +87,22 @@ LOG_CONFIG = {
         },
     },
     "loggers": {
-        # Your application's logger
         "psyche": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
-        # Uvicorn's access logger
         "uvicorn.access": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
-        # Uvicorn's error logger
         "uvicorn.error": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
     },
-    # NEW: Configure the root logger to catch asyncio and other library logs
     "root": {
         "handlers": ["console", "file"],
         "level":
@@ -113,8 +110,44 @@ LOG_CONFIG = {
     }
 }
 
-# Set up logging with the configuration
 def setup_logging():
   # Initialize colorama for cross-platform support
   init(autoreset=True)
   logging.config.dictConfig(LOG_CONFIG)
+
+def log_listener_process(queue: Queue) -> None:
+  """
+    Listens for log records on a queue and processes them.
+
+    This function runs in a separate process. It configures its own
+    logging (using the original dictConfig) and then enters a loop
+    to fetch records from the queue and handle them.
+    """
+  signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+  # Configure logging for this listener process
+  setup_logging()
+  listener_logger = logging.getLogger()
+
+  while True:
+    try:
+      record = queue.get()
+      if record is None:
+        break
+      listener_logger.handle(record)
+    except Exception:
+      import sys, traceback
+      print('Problem in log listener:', file=sys.stderr)
+      traceback.print_exc(file=sys.stderr)
+
+def setup_worker_logging(queue: Queue) -> None:
+  """
+    Configures logging for a worker process to send logs to a queue.
+
+    This should be called from the main process and any child processes.
+    It removes all existing handlers and adds a single QueueHandler.
+    """
+  root = logging.getLogger()
+  root.handlers.clear()
+  root.addHandler(logging.handlers.QueueHandler(queue))
+  root.setLevel(logging.INFO)

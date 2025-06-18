@@ -1,7 +1,6 @@
 from typing import Annotated, AsyncGenerator
 from enum import Enum as PyEnum
 from datetime import datetime
-
 from fastapi import Depends
 from sqlalchemy import (
     DateTime, Enum, ForeignKey, Integer, String, text, Index, Boolean)
