@@ -3,9 +3,12 @@ from enum import Enum as PyEnum
 from datetime import datetime
 from fastapi import Depends
 from sqlalchemy import (
-    DateTime, Enum, ForeignKey, Integer, String, text, Index, Boolean)
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    DateTime, Enum, ForeignKey, Integer, String, text, Index, Boolean, select)
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from alembic.config import Config
+from alembic import command
 
 _SQLITE_FILE = "db.sqlite"
 _SQLITE_DB_URL = f"sqlite+aiosqlite:///{_SQLITE_FILE}"
@@ -19,24 +22,28 @@ AsyncSessionFactory = async_sessionmaker(engine, expire_on_commit=False)
 class Base(DeclarativeBase):
   pass
 
-class AiProvider(str, PyEnum):
-  OPENAI = "openai"
-  ANTHROPIC = "anthropic"
-  GOOGLE = "google"
+class AiProvider(Base):
+  __tablename__ = "aiprovider"
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True)
+  name: Mapped[str] = mapped_column(String, unique=True)
+  base_url: Mapped[str] = mapped_column(String)
 
 class ApiKey(Base):
   __tablename__ = "apikey"
 
   id: Mapped[int] = mapped_column(primary_key=True)
   key_value: Mapped[str] = mapped_column(String, unique=True)
-  provider: Mapped[AiProvider] = mapped_column(Enum(AiProvider))
+  provider_id: Mapped[int] = mapped_column(ForeignKey("aiprovider.id"))
   name: Mapped[str] = mapped_column(String, unique=True)
   active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+  provider: Mapped["AiProvider"] = relationship("AiProvider")
 
   __table_args__ = (
       Index(
           'ix_apikey_active_provider_unique',
-          'provider',
+          'provider_id',
           unique=True,
           postgresql_where=text('active = true'),
           sqlite_where=text('active = 1')), )
@@ -68,10 +75,12 @@ class Message(Base):
       DateTime, server_default=text("CURRENT_TIMESTAMP"))
   generated_by: Mapped[str] = mapped_column(String)
 
-# --- Database Initialization ---
-async def create_db_and_tables():
-  async with engine.begin() as conn:
-    await conn.run_sync(Base.metadata.create_all)
+def run_alembic_upgrade():
+  """
+  Runs the Alembic upgrade command to bring the database to the latest version.
+  """
+  alembic_cfg = Config("alembic.ini")
+  command.upgrade(alembic_cfg, "head")
 
 # --- Dependency Injection ---
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

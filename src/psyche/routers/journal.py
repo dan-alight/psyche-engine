@@ -24,7 +24,7 @@ class JournalEntryUpdate(BaseModel):
 
 tags: list[str | Enum] = ["JournalEntries"]
 
-router = crud_router(
+journal_crud_router = crud_router(
     session=get_async_session,
     model=JournalEntry,
     create_schema=JournalEntryCreate,

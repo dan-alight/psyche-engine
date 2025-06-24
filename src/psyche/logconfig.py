@@ -55,13 +55,13 @@ LOG_CONFIG = {
     "formatters": {
         "console_color": {
             "()": CustomColoredFormatter,
-            "fmt": "[%(asctime)s] [%(levelname)s] %(message)s",
+            "fmt": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": True,
         },
         "file_plain": {
             "()": CustomColoredFormatter,
-            "fmt": "[%(asctime)s] [%(levelname)s] %(message)s",
+            "fmt": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": False,
         },
@@ -86,28 +86,11 @@ LOG_CONFIG = {
             "backupCount": 5,
         },
     },
-    "loggers": {
-        "psyche": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "uvicorn.access": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "uvicorn.error": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
     "root": {
         "handlers": ["console", "file"],
-        "level":
-        "WARNING",  # Set to WARNING to silence noisy INFO logs from other libs
-    }
+        "level": "INFO",
+    },
+    "loggers": {},
 }
 
 def setup_logging():

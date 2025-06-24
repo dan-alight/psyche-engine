@@ -8,20 +8,37 @@ from psyche.db import AiProvider, AsyncSessionDep, ApiKey, get_async_session
 
 # --- Pydantic Models ---
 
-class ApiKeyCreate(BaseModel):
-  key_value: str
-  provider: AiProvider
+class AiProviderRead(BaseModel):
+  id: int
   name: str
+  base_url: str
+
+  class Config:
+    from_attributes = True
+
+class AiProviderCreate(BaseModel):
+  name: str
+  base_url: str
+
+class AiProviderUpdate(BaseModel):
+  id: int
+  name: str | None = None
+  base_url: str | None = None
 
 class ApiKeyRead(BaseModel):
   id: int
   key_value: str
-  provider: AiProvider
+  provider_id: int
   name: str
   active: bool
 
   class Config:
     from_attributes = True
+
+class ApiKeyCreate(BaseModel):
+  provider_id: int
+  key_value: str  
+  name: str
 
 class ApiKeyUpdate(BaseModel):
   key_value: str
@@ -30,18 +47,30 @@ class ApiKeyUpdate(BaseModel):
 
 # --- Routes ---
 
-tags: list[str | Enum] = ["ApiKeys"]
+aiproviders_tags: list[str | Enum] = ["AiProviders"]
 
-router = crud_router(
+aiproviders_crud_router = crud_router(
+    session=get_async_session,
+    model=AiProvider,
+    create_schema=AiProviderCreate,
+    update_schema=AiProviderUpdate,
+    path="/ai-providers",
+    tags=aiproviders_tags,
+    included_methods=["create", "read_multi", "delete"])
+
+api_keys_tags: list[str | Enum] = ["ApiKeys"]
+
+api_keys_crud_router = crud_router(
     session=get_async_session,
     model=ApiKey,
     create_schema=ApiKeyCreate,
     update_schema=ApiKeyUpdate,
     path="/api-keys",
-    tags=tags,
+    tags=api_keys_tags,
     included_methods=["create", "read_multi", "delete"])
 
-@router.put("/api-keys", response_model=ApiKeyRead, tags=tags)
+@api_keys_crud_router.put(
+    "/api-keys", response_model=ApiKeyRead, tags=api_keys_tags)
 async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
   """
   Update an API key's name or active status.
@@ -66,7 +95,7 @@ async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
   if request.new_active is True:
     deactivate_stmt = (
         update(ApiKey).where(
-            ApiKey.provider == api_key_to_update.provider,
+            ApiKey.provider_id == api_key_to_update.provider_id,
             ApiKey.active == True, ApiKey.id
             != api_key_to_update.id).values(active=False))
     await db.execute(deactivate_stmt)

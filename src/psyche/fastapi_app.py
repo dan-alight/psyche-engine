@@ -5,8 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
-from psyche.db import create_db_and_tables
-from psyche.routers import api_keys, journal
+from psyche.routers import ai_providers, journal
 
 logger = logging.getLogger("psyche")
 
@@ -15,7 +14,6 @@ logger = logging.getLogger("psyche")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   """This function is called by FastAPI on application startup and shutdown."""
-  await create_db_and_tables()
   yield
 
 app = FastAPI(lifespan=lifespan)
@@ -29,10 +27,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-app.include_router(api_keys.router)
+app.include_router(ai_providers.aiproviders_crud_router)
+app.include_router(ai_providers.api_keys_crud_router)
 # Order is important
 app.include_router(journal.stats_router)
-app.include_router(journal.router)
+app.include_router(journal.journal_crud_router)
 
 
 @app.exception_handler(RequestValidationError)

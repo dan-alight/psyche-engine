@@ -1,20 +1,25 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "psyche"
 version = "0.1.0"
-description = "Your FastAPI project"
+description = "Psychic Operating System"
 dependencies = [
     "fastapi",
     "uvicorn",
     "sqlalchemy",
+    "alembic",
     "aiosqlite",
-    "fastcrud"
+    "fastcrud",
+    "openai"
 ]
 
 [project.optional-dependencies]
 dev = [
     "yapf"    
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
