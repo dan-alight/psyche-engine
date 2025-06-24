@@ -37,10 +37,11 @@ class ApiKeyRead(BaseModel):
 
 class ApiKeyCreate(BaseModel):
   provider_id: int
-  key_value: str  
+  key_value: str
   name: str
 
 class ApiKeyUpdate(BaseModel):
+  provider_id: int
   key_value: str
   new_name: str | None = None
   new_active: bool | None = None
@@ -83,7 +84,8 @@ async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
   """
 
   get_stmt = select(ApiKey).where(
-      ApiKey.key_value == request.key_value).with_for_update()
+      ApiKey.key_value == request.key_value,
+      ApiKey.provider_id == request.provider_id).with_for_update()
   result = await db.execute(get_stmt)
   api_key_to_update = result.scalar_one_or_none()
 

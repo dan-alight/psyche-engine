@@ -3,7 +3,8 @@ from enum import Enum as PyEnum
 from datetime import datetime
 from fastapi import Depends
 from sqlalchemy import (
-    DateTime, Enum, ForeignKey, Integer, String, text, Index, Boolean, select)
+    DateTime, ForeignKey, Integer, String, text, Index, Boolean,
+    UniqueConstraint)
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -24,7 +25,6 @@ class Base(DeclarativeBase):
 
 class AiProvider(Base):
   __tablename__ = "aiprovider"
-
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
   name: Mapped[str] = mapped_column(String, unique=True)
   base_url: Mapped[str] = mapped_column(String)
@@ -33,9 +33,10 @@ class ApiKey(Base):
   __tablename__ = "apikey"
 
   id: Mapped[int] = mapped_column(primary_key=True)
-  key_value: Mapped[str] = mapped_column(String, unique=True)
-  provider_id: Mapped[int] = mapped_column(ForeignKey("aiprovider.id"))
-  name: Mapped[str] = mapped_column(String, unique=True)
+  key_value: Mapped[str] = mapped_column(String)
+  name: Mapped[str] = mapped_column(String)
+  provider_id: Mapped[int] = mapped_column(
+      ForeignKey("aiprovider.id", ondelete="CASCADE"))
   active: Mapped[bool] = mapped_column(Boolean, default=False)
 
   provider: Mapped["AiProvider"] = relationship("AiProvider")
@@ -46,7 +47,11 @@ class ApiKey(Base):
           'provider_id',
           unique=True,
           postgresql_where=text('active = true'),
-          sqlite_where=text('active = 1')), )
+          sqlite_where=text('active = 1')),
+      UniqueConstraint('provider_id', 'name', name='uq_apikey_provider_name'),
+      UniqueConstraint(
+          'provider_id', 'key_value', name='uq_apikey_provider_key_value'),
+  )
 
 class JournalEntry(Base):
   __tablename__ = "journalentry"
