@@ -56,7 +56,7 @@ aiproviders_crud_router = crud_router(
     update_schema=AiProviderUpdate,
     path="/ai-providers",
     tags=aiproviders_tags,
-    included_methods=["create", "read_multi", "delete"])
+    included_methods=["create", "read_multi", "delete", "update"])
 
 api_keys_tags: list[str | Enum] = ["ApiKeys"]
 
