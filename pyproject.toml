@@ -18,7 +18,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "yapf"    
+    "yapf",
+    "click"
 ]
 
 [tool.setuptools.packages.find]
