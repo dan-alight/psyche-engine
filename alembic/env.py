@@ -18,7 +18,7 @@ config = context.config
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from psyche.db import Base
+from psyche.models import Base
 
 target_metadata = Base.metadata
 

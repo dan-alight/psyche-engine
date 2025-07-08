@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
-from psyche.db import AsyncSessionDep
+from psyche.database import SessionDep
 import json
 import logging
 
@@ -9,7 +9,7 @@ logger = logging.getLogger("psyche")
 router = APIRouter()
 
 @router.websocket("/chat")
-async def chat(websocket: WebSocket, db: AsyncSessionDep):
+async def chat(websocket: WebSocket, db: SessionDep):
   """WebSocket endpoint for real-time communication."""
 
   await websocket.accept()

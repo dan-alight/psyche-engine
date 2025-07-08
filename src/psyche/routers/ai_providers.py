@@ -1,50 +1,55 @@
 from enum import Enum
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastcrud import FastCRUD, crud_router
+from typing import Annotated
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, update
-from pydantic import BaseModel
-from psyche.db import AiProvider, AsyncSessionDep, ApiKey, get_async_session
+from psyche.models.ai_models import AiProvider, ApiKey, AiModel
+from psyche.database import SessionDep, get_async_session
+from psyche.schemas.ai_schemas import (
+    AiProviderCreate, AiProviderUpdate, ApiKeyCreate, ApiKeyUpdate, ApiKeyRead)
+from openai import AsyncOpenAI, APIError
 
-# --- Pydantic Models ---
+# --- Dependency Injection ---
 
-class AiProviderRead(BaseModel):
-  id: int
-  name: str
-  base_url: str
+_openai_client_cache = {}
 
-  class Config:
-    from_attributes = True
+async def get_async_openai_client(
+    provider_id: int, db: SessionDep) -> AsyncOpenAI:
+  """
+    Dependency to create and cache an AsyncOpenAI client for a specific provider.
+    """
+  provider = await db.get(AiProvider, provider_id)
+  if not provider:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
-class AiProviderCreate(BaseModel):
-  name: str
-  base_url: str
+  active_api_key = await db.scalar(
+      select(ApiKey).where(
+          ApiKey.provider_id == provider_id, ApiKey.active == True))
+  if not active_api_key:
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="No active API key found for this provider",
+    )
 
-class AiProviderUpdate(BaseModel):
-  id: int
-  name: str | None = None
-  base_url: str | None = None
+  cached_client, cached_base_url, cached_api_key = _openai_client_cache.get(
+      provider_id, (None, None, None))
 
-class ApiKeyRead(BaseModel):
-  id: int
-  key_value: str
-  provider_id: int
-  name: str
-  active: bool
+  if (cached_client and cached_base_url == provider.base_url
+      and cached_api_key == active_api_key.key_value):
+    return cached_client
 
-  class Config:
-    from_attributes = True
+  new_client = AsyncOpenAI(
+      base_url=provider.base_url,
+      api_key=active_api_key.key_value,
+  )
+  _openai_client_cache[provider_id] = (
+      new_client, provider.base_url, active_api_key.key_value)
 
-class ApiKeyCreate(BaseModel):
-  provider_id: int
-  key_value: str
-  name: str
+  return new_client
 
-class ApiKeyUpdate(BaseModel):
-  provider_id: int
-  key_value: str
-  new_name: str | None = None
-  new_active: bool | None = None
+OpenAIDep = Annotated[AsyncOpenAI, Depends(get_async_openai_client)]
 
 # --- Routes ---
 
@@ -59,6 +64,72 @@ aiproviders_crud_router = crud_router(
     tags=aiproviders_tags,
     included_methods=["create", "read_multi", "delete", "update"])
 
+aiproviders_router = APIRouter(tags=aiproviders_tags)
+
+@aiproviders_router.get(
+    "/ai-providers/{provider_id}/models", tags=aiproviders_tags)
+async def get_provider_models(
+    provider_id: int, client: OpenAIDep, db: SessionDep, refresh: bool = False):
+  """
+    Get available models from a provider.
+
+    Args:
+      refresh: If true, will fetch the model list from the provider's API and
+        update the database. Otherwise, will return the currently stored models.
+    """
+  if refresh:
+    try:
+      # Fetch the current list of models from the provider's API
+      models_from_api = await client.models.list()
+      api_model_names = {model.id for model in models_from_api.data}
+
+      # Fetch the names of existing models from the database
+      existing_models_stmt = select(
+          AiModel.name).where(AiModel.provider_id == provider_id)
+      result = await db.execute(existing_models_stmt)
+      db_model_names = {name for (name, ) in result}
+
+      # Determine which models to add and which to delete
+      models_to_add = api_model_names - db_model_names
+      models_to_delete = db_model_names - api_model_names
+
+      # Perform additions and deletions in a single transaction
+      if models_to_add:
+        db.add_all(
+            [
+                AiModel(provider_id=provider_id, name=name)
+                for name in models_to_add
+            ])
+
+      if models_to_delete:
+        await db.execute(
+            delete(AiModel).where(
+                AiModel.provider_id == provider_id,
+                AiModel.name.in_(models_to_delete)))
+
+      # Commit the transaction if any changes were made
+      if models_to_add or models_to_delete:
+        await db.commit()
+
+      # Return the updated list of all models from the database
+      all_models_stmt = select(AiModel).where(
+          AiModel.provider_id == provider_id)
+      result = await db.execute(all_models_stmt)
+      return result.scalars().all()
+
+    except APIError as e:
+      # It's good practice to roll back the transaction on API error
+      await db.rollback()
+      raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail=f"Error fetching models from provider: {e.message}",
+      )
+  else:
+    # Return models directly from the database
+    stmt = select(AiModel).where(AiModel.provider_id == provider_id)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
 api_keys_tags: list[str | Enum] = ["ApiKeys"]
 
 api_keys_crud_router = crud_router(
@@ -72,7 +143,7 @@ api_keys_crud_router = crud_router(
 
 @api_keys_crud_router.put(
     "/api-keys", response_model=ApiKeyRead, tags=api_keys_tags)
-async def update_api_key(request: ApiKeyUpdate, db: AsyncSessionDep):
+async def update_api_key(request: ApiKeyUpdate, db: SessionDep):
   """
   Update an API key's name or active status.
 

@@ -2,7 +2,7 @@ import time
 import logging
 import multiprocessing
 from psyche.logconfig import setup_worker_logging, log_listener_process, setup_logging
-from psyche.db import run_alembic_upgrade
+from psyche.database import run_alembic_upgrade
 
 if __name__ == "__main__":
   # Prevent pointless re-import on child process spawn

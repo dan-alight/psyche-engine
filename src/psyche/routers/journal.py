@@ -4,23 +4,11 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, update, func
 from fastcrud import FastCRUD, crud_router
-from psyche.db import AsyncSessionDep, ApiKey, JournalEntry, get_async_session
-
-# --- Pydantic Models ---
-
-class JournalEntryCreate(BaseModel):
-  content: str
-
-class JournalEntryRead(BaseModel):
-  id: int
-  content: str
-  created_at: str
-
-class JournalEntryUpdate(BaseModel):
-  id: int
-  content: str
-
-# --- Routes ---
+from psyche.models.ai_models import AiProvider, ApiKey, AiModel
+from psyche.models.journal_models import JournalEntry
+from psyche.schemas.journal_schemas import (
+    JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)
+from psyche.database import SessionDep, get_async_session
 
 tags: list[str | Enum] = ["JournalEntries"]
 
@@ -33,10 +21,10 @@ journal_crud_router = crud_router(
     tags=tags,
     included_methods=["create", "read", "read_multi", "delete"])
 
-stats_router = APIRouter()
+journal_router = APIRouter()
 
-@stats_router.get("/journal-entries/stats", tags=tags)
-async def get_journal_entries_stats(db: AsyncSessionDep):
+@journal_router.get("/journal-entries/stats", tags=tags)
+async def get_journal_entries_stats(db: SessionDep):
   stmt = select(func.count()).select_from(JournalEntry)
   result = await db.execute(stmt)
   count = result.scalar_one()
