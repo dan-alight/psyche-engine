@@ -13,7 +13,6 @@ class AiProviderCreate(BaseModel):
   base_url: str
 
 class AiProviderUpdate(BaseModel):
-  id: int
   name: str | None = None
   base_url: str | None = None
 
@@ -33,7 +32,17 @@ class ApiKeyCreate(BaseModel):
   name: str
 
 class ApiKeyUpdate(BaseModel):
-  provider_id: int
-  key_value: str
   new_name: str | None = None
   new_active: bool | None = None
+
+class AiModelRead(BaseModel):
+  id: int
+  name: str
+  provider_id: int
+  active: bool
+
+  class Config:
+    from_attributes = True
+
+class AiModelUpdate(BaseModel):
+  active: bool | None = None

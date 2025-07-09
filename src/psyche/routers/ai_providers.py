@@ -7,7 +7,8 @@ from sqlalchemy import select, delete, update
 from psyche.models.ai_models import AiProvider, ApiKey, AiModel
 from psyche.database import SessionDep, get_async_session
 from psyche.schemas.ai_schemas import (
-    AiProviderCreate, AiProviderUpdate, ApiKeyCreate, ApiKeyUpdate, ApiKeyRead)
+    AiProviderCreate, AiProviderUpdate, ApiKeyCreate, ApiKeyUpdate, ApiKeyRead,
+    AiModelRead, AiModelUpdate)
 from openai import AsyncOpenAI, APIError
 
 # --- Dependency Injection ---
@@ -130,6 +131,25 @@ async def get_provider_models(
     result = await db.execute(stmt)
     return result.scalars().all()
 
+@aiproviders_router.patch(
+    "/ai-providers/{provider_id}/models/{model_id}",
+    response_model=AiModelRead,
+    tags=aiproviders_tags)
+async def update_model(request: AiModelUpdate, model_id: int, db: SessionDep):
+  get_stmt = select(AiModel).where(AiModel.id == model_id).with_for_update()
+  result = await db.execute(get_stmt)
+  model_to_update = result.scalar_one_or_none()
+  if not model_to_update:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Model not found.")
+  if request.active is not None:
+    model_to_update.active = request.active
+
+  await db.commit()
+  await db.refresh(model_to_update)
+  return model_to_update
+
 api_keys_tags: list[str | Enum] = ["ApiKeys"]
 
 api_keys_crud_router = crud_router(
@@ -141,9 +161,9 @@ api_keys_crud_router = crud_router(
     tags=api_keys_tags,
     included_methods=["create", "read_multi", "delete"])
 
-@api_keys_crud_router.put(
-    "/api-keys", response_model=ApiKeyRead, tags=api_keys_tags)
-async def update_api_key(request: ApiKeyUpdate, db: SessionDep):
+@api_keys_crud_router.patch(
+    "/api-keys/{id}", response_model=ApiKeyRead, tags=api_keys_tags)
+async def update_api_key(request: ApiKeyUpdate, id: int, db: SessionDep):
   """
   Update an API key's name or active status.
 
@@ -154,9 +174,7 @@ async def update_api_key(request: ApiKeyUpdate, db: SessionDep):
   - Updating the name is subject to a unique constraint check.
   """
 
-  get_stmt = select(ApiKey).where(
-      ApiKey.key_value == request.key_value,
-      ApiKey.provider_id == request.provider_id).with_for_update()
+  get_stmt = select(ApiKey).where(ApiKey.id == id).with_for_update()
   result = await db.execute(get_stmt)
   api_key_to_update = result.scalar_one_or_none()
 
