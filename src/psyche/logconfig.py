@@ -40,10 +40,7 @@ class UvicornFilter(logging.Filter):
 
   def filter(self, record) -> bool:
     startup_messages = [
-        "Started server process", "Waiting for application startup",
-        "Application startup complete", "Shutting down",
-        "Waiting for application shutdown", "Application shutdown complete",
-        "Finished server process"
+
     ]
     message = record.getMessage()
 

@@ -1,31 +1,37 @@
-import time
 import logging
-import multiprocessing
-from psyche.logconfig import setup_worker_logging, log_listener_process, setup_logging
+import asyncio
+import uvicorn
+
+from psyche.logconfig import setup_logging
 from psyche.database import run_alembic_upgrade
+from psyche.fastapi_app import app
+from psyche.task_executor import TaskExecutor
 
-if __name__ == "__main__":
-  # Prevent pointless re-import on child process spawn
-  import uvicorn
-  from psyche.fastapi_app import app
+_WEBSERVER_PORT = 5010
+logger = logging.getLogger("psyche")
 
-  log_queue = multiprocessing.Queue()
-  listener_process = multiprocessing.Process(
-      target=log_listener_process, args=(log_queue, ))
-  listener_process.start()
-
-  setup_worker_logging(log_queue)
-
-  logger = logging.getLogger("psyche")
-
+async def main():
+  setup_logging()
   run_alembic_upgrade()
 
-  try:
-    uvicorn.run(app, port=5010, log_config=None)
-  finally:
-    log_queue.put(None)
-    listener_process.join()
+  config = uvicorn.Config(
+      app,
+      port=_WEBSERVER_PORT,
+      log_config=None,
+  )
+  server = uvicorn.Server(config)
 
-  setup_logging()
-  final_logger = logging.getLogger("psyche")
-  final_logger.info("Program shutting down")
+  task_executor = TaskExecutor()
+  app.state.executor = task_executor
+
+  try:
+    async with asyncio.TaskGroup() as tg:
+      tg.create_task(server.serve())
+      tg.create_task(task_executor.run())
+  except asyncio.CancelledError:
+    pass
+  finally:
+    logger.info("Psyche shutting down.")
+
+if __name__ == "__main__":
+  asyncio.run(main())
