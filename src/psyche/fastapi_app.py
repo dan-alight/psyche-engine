@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
-from psyche.routers import ai_providers, journal
+from psyche.routers import ai_providers, journal, chat
 
 logger = logging.getLogger("psyche")
 
@@ -34,6 +34,8 @@ app.include_router(ai_providers.api_keys_crud_router)
 
 app.include_router(journal.journal_router)
 app.include_router(journal.journal_crud_router)
+
+app.include_router(chat.chat_router)
 
 @app.exception_handler(RequestValidationError)
 async def custom_validation_exception_handler(
