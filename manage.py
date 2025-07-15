@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from psyche.config import SQLITE_DB_FILE_PATH
 # Import your models so they are registered with the Base
-from psyche.models import Base, AiProvider, ApiKey, AiModel
+from psyche.models import Base, AiProvider, ApiKey
 
 _SYNC_SQLITE_DB_URL = f"sqlite:///{SQLITE_DB_FILE_PATH}"
 
@@ -19,21 +19,82 @@ def cli():
   pass
 
 @cli.command()
+def create_tables():
+  """Creates all tables exported by models package."""
+  engine = create_engine(_SYNC_SQLITE_DB_URL)
+  click.echo("Creating all tables...")
+  Base.metadata.create_all(engine)
+  click.echo("✅ Tables created successfully.")
+
+@cli.command()
 def reset_db():
-  """Drops all tables and recreates them. DELETES ALL DATA.
-  Afterwards, seeds the database with data from a JSON file."""
+  """Drops all tables and recreates them. DELETES ALL DATA."""
   engine = create_engine(_SYNC_SQLITE_DB_URL)
 
-  if input("Are you sure you want to drop all data? [y/N]: ").lower() != 'y':
-    click.echo("Aborted.")
-    return
-  click.echo("Dropping all tables...")
+  click.echo(f"Resetting database '{SQLITE_DB_FILE_PATH}'.")
+  click.echo(f"Dropping all tables...")
   Base.metadata.drop_all(engine)
   click.echo("Tables dropped.")
 
-  click.echo("Creating all tables...")
+  click.echo(f"Creating all tables...")
   Base.metadata.create_all(engine)
   click.echo("Tables created.")
+
+  click.echo(f"Setting up triggers...")
+  TRIGGER_INSERT = """
+  CREATE TRIGGER update_conversation_last_updated_after_insert
+  AFTER INSERT ON conversation_message
+  FOR EACH ROW
+  BEGIN
+      UPDATE conversation
+      SET last_updated = NEW.created_at
+      WHERE id = NEW.conversation_id;
+  END;
+  """
+  TRIGGER_DELETE = """
+  CREATE TRIGGER update_conversation_last_updated_after_delete
+  AFTER DELETE ON conversation_message
+  FOR EACH ROW
+  BEGIN
+      UPDATE conversation
+      SET last_updated = (
+          SELECT MAX(created_at)
+          FROM conversation_message
+          WHERE conversation_id = OLD.conversation_id
+      )
+      WHERE id = OLD.conversation_id;
+  END;
+  """
+  TRIGGER_UPDATE = """
+  CREATE TRIGGER update_conversation_last_updated_after_update
+  AFTER UPDATE ON conversation_message
+  FOR EACH ROW
+  BEGIN
+      -- Always recalculate for the new conversation the message belongs to.
+      UPDATE conversation
+      SET last_updated = (
+          SELECT MAX(created_at)
+          FROM conversation_message
+          WHERE conversation_id = NEW.conversation_id
+      )
+      WHERE id = NEW.conversation_id;
+
+      -- Recalculate for the old conversation, but ONLY if its ID is
+      -- different from the new conversation's ID.
+      UPDATE conversation
+      SET last_updated = (
+          SELECT MAX(created_at)
+          FROM conversation_message
+          WHERE conversation_id = OLD.conversation_id
+      )
+      WHERE id = OLD.conversation_id AND NEW.conversation_id != OLD.conversation_id;
+  END;
+  """
+  with engine.begin() as conn:
+    conn.execute(text(TRIGGER_DELETE))
+    conn.execute(text(TRIGGER_INSERT))
+    conn.execute(text(TRIGGER_UPDATE))
+  click.echo("Triggers created.")
 
   click.echo("✅ Database has been reset successfully.")
 
@@ -45,7 +106,7 @@ def seed_db(file):
   engine = create_engine(_SYNC_SQLITE_DB_URL)
   Session = sessionmaker(engine)
 
-  click.echo(f"Seeding database from {file}...")
+  click.echo(f"Seeding '{SQLITE_DB_FILE_PATH}' from {file}.")
 
   try:
     with open(file, 'r') as f:
@@ -99,15 +160,16 @@ def seed_db(file):
   finally:
     session.close()
 
-# --- NEW GENERIC HELPER FUNCTION ---
 def _copy_table(source_db_path: str, dest_db_path: str, table_name: str):
   """
     Copies a table from a source SQLite database to a destination SQLite database.
 
     This function is self-contained and creates its own engine. It will:
     1. Connect to the destination database (creating it if it doesn't exist).
-    2. Abort if the table already exists in the destination.
-    3. Recreate the table schema in the destination.
+    2. Check if the table exists in the destination. If it exists and contains
+       data, the operation is aborted.
+    3. If the table does not exist in the destination, its schema is recreated.
+       If it exists but is empty, the schema creation is skipped.
     4. Copy all data from the source table to the destination table.
 
     Args:
@@ -120,7 +182,8 @@ def _copy_table(source_db_path: str, dest_db_path: str, table_name: str):
 
     Raises:
         FileNotFoundError: If the source database file does not exist.
-        ValueError: If the table already exists in the destination or is not found in the source.
+        ValueError: If the table exists in the destination and is not empty,
+                    or if the table is not found in the source.
     """
   if not os.path.exists(source_db_path):
     raise FileNotFoundError(f"Source database '{source_db_path}' not found.")
@@ -138,31 +201,40 @@ def _copy_table(source_db_path: str, dest_db_path: str, table_name: str):
       attach_sql = text(f"ATTACH DATABASE :source_path AS {source_alias}")
       conn.execute(attach_sql, {"source_path": source_db_path})
 
-      # 1. SAFETY CHECK: Abort if table exists in destination ('main')
+      # 1. CHECK TABLE IN DESTINATION
       check_sql = text(
           f"SELECT name FROM {dest_alias}.sqlite_master WHERE type='table' AND name=:table_name"
       )
-      if conn.execute(check_sql,
-                      {"table_name": table_name}).scalar_one_or_none():
-        raise ValueError(
-            f"Table '{table_name}' already exists in destination '{dest_db_path}'."
-        )
-
-      # 2. Get schema from the attached source database
-      schema_sql = text(
-          f"SELECT sql FROM {source_alias}.sqlite_master WHERE type='table' AND name=:table_name"
-      )
-      schema_result = conn.execute(schema_sql, {
+      table_exists = conn.execute(check_sql, {
           "table_name": table_name
-      }).scalar_one_or_none()
-      if not schema_result:
-        raise ValueError(
-            f"Table '{table_name}' not found in source '{source_db_path}'.")
+      }).scalar_one_or_none() is not None
 
-      # 3. Create table in the destination ('main')
-      conn.execute(text(schema_result))
+      if table_exists:
+        # Table exists. Check if it's empty.
+        count_sql = text(f"SELECT COUNT(*) FROM {dest_alias}.{table_name}")
+        row_count = conn.execute(count_sql).scalar_one()
+        if row_count > 0:
+          raise ValueError(
+              f"Table '{table_name}' already exists in destination "
+              f"'{dest_db_path}' and is not empty.")
+        # If we're here, table exists and is empty. We can proceed to copy.
+      else:
+        # Table does not exist. We need to create it.
+        # Get schema from the attached source database
+        schema_sql = text(
+            f"SELECT sql FROM {source_alias}.sqlite_master WHERE type='table' AND name=:table_name"
+        )
+        schema_result = conn.execute(schema_sql, {
+            "table_name": table_name
+        }).scalar_one_or_none()
+        if not schema_result:
+          raise ValueError(
+              f"Table '{table_name}' not found in source '{source_db_path}'.")
 
-      # 4. Copy data from source to destination
+        # Create table in the destination ('main')
+        conn.execute(text(schema_result))
+
+      # 2. COPY DATA (This part is now common to both paths)
       copy_sql = text(
           f"INSERT INTO {dest_alias}.{table_name} SELECT * FROM {source_alias}.{table_name}"
       )
@@ -192,7 +264,7 @@ def _copy_table(source_db_path: str, dest_db_path: str, table_name: str):
 def backup_table(table, backup_file):
   """Backs up a table from the main database to a separate backup file."""
   click.echo(
-      f"Starting backup of '{table}' from '{SQLITE_DB_FILE_PATH}' to '{backup_file}'..."
+      f"Starting backup of '{table}' from '{SQLITE_DB_FILE_PATH}' to '{backup_file}'."
   )
 
   try:
@@ -200,8 +272,7 @@ def backup_table(table, backup_file):
         source_db_path=SQLITE_DB_FILE_PATH,
         dest_db_path=backup_file,
         table_name=table)
-    click.echo(f"{rows_copied} rows backed up.")
-    click.echo(f"✅ Backup of table '{table}' completed successfully.")
+    click.echo(f"✅ {rows_copied} rows backed up.")
   except (ValueError, FileNotFoundError) as e:
     click.echo(f"Error: {e}", err=True)
     sys.exit(1)
@@ -219,7 +290,7 @@ def backup_table(table, backup_file):
 def restore_table(table, backup_file):
   """Restores a table from a backup file into the main database."""
   click.echo(
-      f"Starting restore of '{table}' from '{backup_file}' to '{SQLITE_DB_FILE_PATH}'..."
+      f"Starting restore of '{table}' from '{backup_file}' to '{SQLITE_DB_FILE_PATH}'."
   )
 
   try:
@@ -227,8 +298,7 @@ def restore_table(table, backup_file):
         source_db_path=backup_file,
         dest_db_path=SQLITE_DB_FILE_PATH,
         table_name=table)
-    click.echo(f"{rows_copied} rows restored.")
-    click.echo(f"✅ Restore of table '{table}' completed successfully.")
+    click.echo(f"✅ {rows_copied} rows restored.")
   except ValueError as e:
     click.echo(f"Error: {e}", err=True)
     click.echo(
@@ -240,6 +310,13 @@ def restore_table(table, backup_file):
   except Exception as e:
     click.echo(f"An unexpected error occurred: {e}", err=True)
     sys.exit(1)
+
+@cli.command()
+@click.option(
+    '--table', default='journal_entry', help='Name of the table to restore.')
+def restore_backup(table):
+  # this should
+  pass
 
 if __name__ == "__main__":
   cli()
