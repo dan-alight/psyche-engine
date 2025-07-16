@@ -1,6 +1,9 @@
+from enum import Enum
 from datetime import datetime
 from psyche.models.base import Base
-from sqlalchemy import Integer, String, DateTime, text, ForeignKey, UniqueConstraint, ForeignKeyConstraint
+from sqlalchemy import (
+    Integer, String, DateTime, text, ForeignKey, UniqueConstraint,
+    ForeignKeyConstraint, Enum as SQLEnum)
 from sqlalchemy.orm import Mapped, mapped_column
 
 class Conversation(Base):
@@ -10,6 +13,10 @@ class Conversation(Base):
   title: Mapped[str] = mapped_column(String)
   last_updated: Mapped[datetime | None] = mapped_column(DateTime)
 
+class ConversationMessageRole(Enum):
+  USER = "user"
+  ASSISTANT = "assistant"
+
 class ConversationMessage(Base):
   __tablename__ = "conversation_message"
 
@@ -18,6 +25,8 @@ class ConversationMessage(Base):
       Integer, ForeignKey("conversation.id", ondelete="CASCADE"), index=True)
   parent_message_id: Mapped[int | None] = mapped_column(Integer)
   content: Mapped[str] = mapped_column(String)
+  role: Mapped[ConversationMessageRole] = mapped_column(
+      SQLEnum(ConversationMessageRole))
   created_at: Mapped[datetime] = mapped_column(
       DateTime, server_default=text("CURRENT_TIMESTAMP"))
 

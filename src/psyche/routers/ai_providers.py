@@ -1,5 +1,5 @@
 from enum import Enum
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from fastcrud import FastCRUD, crud_router
 from typing import Annotated
 from sqlalchemy.exc import IntegrityError
@@ -7,8 +7,8 @@ from sqlalchemy import select, delete, update
 from psyche.models.ai_models import AiProvider, ApiKey, AiModel
 from psyche.database import SessionDep, get_async_session
 from psyche.schemas.ai_schemas import (
-    AiProviderCreate, AiProviderUpdate, ApiKeyCreate, ApiKeyUpdate, ApiKeyRead,
-    AiModelRead, AiModelUpdate)
+    AiProviderCreate, AiProviderUpdate, AiProviderRead, ApiKeyCreate,
+    ApiKeyUpdate, ApiKeyRead, AiModelRead, AiModelUpdate)
 from openai import AsyncOpenAI, APIError
 
 # --- Dependency Injection ---
@@ -61,6 +61,7 @@ aiproviders_crud_router = crud_router(
     model=AiProvider,
     create_schema=AiProviderCreate,
     update_schema=AiProviderUpdate,
+    select_schema=AiProviderRead,
     path="/ai-providers",
     tags=aiproviders_tags,
     included_methods=["create", "read_multi", "delete", "update"])
@@ -70,7 +71,14 @@ aiproviders_router = APIRouter(tags=aiproviders_tags)
 @aiproviders_router.get(
     "/ai-providers/{provider_id}/models", tags=aiproviders_tags)
 async def get_provider_models(
-    provider_id: int, client: OpenAIDep, db: SessionDep, refresh: bool = False):
+    provider_id: int,
+    client: OpenAIDep,
+    db: SessionDep,
+    refresh: bool = Query(
+        False,
+        description=
+        "Force a refresh of the model list directly from the provider, bypassing the cache."
+    )):
   """
     Get available models from a provider.
 
@@ -141,8 +149,7 @@ async def update_model(request: AiModelUpdate, model_id: int, db: SessionDep):
   model_to_update = result.scalar_one_or_none()
   if not model_to_update:
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Model not found.")
+        status_code=status.HTTP_404_NOT_FOUND, detail="Model not found.")
   if request.active is not None:
     model_to_update.active = request.active
 
@@ -157,6 +164,7 @@ api_keys_crud_router = crud_router(
     model=ApiKey,
     create_schema=ApiKeyCreate,
     update_schema=ApiKeyUpdate,
+    select_schema=ApiKeyRead,
     path="/api-keys",
     tags=api_keys_tags,
     included_methods=["create", "read_multi", "delete"])

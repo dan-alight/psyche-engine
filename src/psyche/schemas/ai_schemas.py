@@ -1,12 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class AiProviderRead(BaseModel):
   id: int
   name: str
   base_url: str
 
-  class Config:
-    from_attributes = True
+  model_config = ConfigDict(from_attributes=True)
 
 class AiProviderCreate(BaseModel):
   name: str
@@ -23,8 +22,7 @@ class ApiKeyRead(BaseModel):
   name: str
   active: bool
 
-  class Config:
-    from_attributes = True
+  model_config = ConfigDict(from_attributes=True)
 
 class ApiKeyCreate(BaseModel):
   provider_id: int
@@ -41,8 +39,7 @@ class AiModelRead(BaseModel):
   provider_id: int
   active: bool
 
-  class Config:
-    from_attributes = True
+  model_config = ConfigDict(from_attributes=True)
 
 class AiModelUpdate(BaseModel):
   active: bool | None = None

@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Response, status
@@ -10,6 +11,8 @@ from psyche.schemas.journal_schemas import (
     JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)
 from psyche.database import SessionDep, get_async_session
 
+logger = logging.getLogger("psyche.journal")
+
 tags: list[str | Enum] = ["JournalEntries"]
 
 journal_crud_router = crud_router(
@@ -17,9 +20,10 @@ journal_crud_router = crud_router(
     model=JournalEntry,
     create_schema=JournalEntryCreate,
     update_schema=JournalEntryUpdate,
+    select_schema=JournalEntryRead,
     path="/journal-entries",
     tags=tags,
-    included_methods=["create", "read", "read_multi", "delete"])
+    included_methods=["create", "read_multi", "read", "delete"])
 
 journal_router = APIRouter()
 

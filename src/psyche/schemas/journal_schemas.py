@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 class JournalEntryCreate(BaseModel):
@@ -6,8 +7,7 @@ class JournalEntryCreate(BaseModel):
 class JournalEntryRead(BaseModel):
   id: int
   content: str
-  created_at: str
+  created_at: datetime
 
 class JournalEntryUpdate(BaseModel):
-  id: int
   content: str
