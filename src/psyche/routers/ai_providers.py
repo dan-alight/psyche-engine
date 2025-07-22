@@ -191,7 +191,7 @@ async def update_api_key(request: ApiKeyUpdate, id: int, db: SessionDep):
         status_code=status.HTTP_404_NOT_FOUND,
         detail="API key with the given value not found.")
 
-  if request.new_active is True:
+  if request.active is True:
     deactivate_stmt = (
         update(ApiKey).where(
             ApiKey.provider_id == api_key_to_update.provider_id,
@@ -199,10 +199,10 @@ async def update_api_key(request: ApiKeyUpdate, id: int, db: SessionDep):
             != api_key_to_update.id).values(active=False))
     await db.execute(deactivate_stmt)
 
-  if request.new_name is not None:
-    api_key_to_update.name = request.new_name
-  if request.new_active is not None:
-    api_key_to_update.active = request.new_active
+  if request.name is not None:
+    api_key_to_update.name = request.name
+  if request.active is not None:
+    api_key_to_update.active = request.active
 
   try:
     await db.commit()

@@ -10,6 +10,7 @@ from psyche.models.journal_models import JournalEntry
 from psyche.schemas.journal_schemas import (
     JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)
 from psyche.database import SessionDep, get_async_session
+from psyche.custom_endpoint_creator import CustomEndpointCreator
 
 logger = logging.getLogger("psyche.journal")
 
@@ -21,9 +22,11 @@ journal_crud_router = crud_router(
     create_schema=JournalEntryCreate,
     update_schema=JournalEntryUpdate,
     select_schema=JournalEntryRead,
+    endpoint_creator=CustomEndpointCreator,
     path="/journal-entries",
     tags=tags,
-    included_methods=["create", "read_multi", "read", "delete"])
+    included_methods=["create", "read_multi", "read", "delete", "update"],
+)
 
 journal_router = APIRouter()
 

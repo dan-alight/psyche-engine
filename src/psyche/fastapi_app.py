@@ -40,11 +40,3 @@ app.include_router(journal.journal_router)
 app.include_router(journal.journal_crud_router)
 app.include_router(chat.chat_router)
 app.include_router(chat.conversation_crud_router)
-
-@app.exception_handler(RequestValidationError)
-async def custom_validation_exception_handler(
-    request: Request, exc: RequestValidationError):
-  logger.warning(
-      "Validation error:", exc.errors(), '', 'Request body:', await
-      request.body())
-  return await request_validation_exception_handler(request, exc)

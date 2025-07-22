@@ -43,12 +43,13 @@ async def get_conversations(
   """
   Get a list of conversations, sorted by most recently updated.
   """
-  return await conversation_crud.get_multi(
+  conversations = await conversation_crud.get_multi(
       db=db,
       offset=offset,
       limit=limit,
       sort_columns="last_updated",
       sort_orders="desc")
+  return conversations["data"]
 
 chat_router = APIRouter()
 

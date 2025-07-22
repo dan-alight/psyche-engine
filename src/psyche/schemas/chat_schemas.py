@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ConversationRead(BaseModel):
   id: int
-  title: str
+  title: str | None
   last_updated: datetime | None
 
   model_config = ConfigDict(from_attributes=True)
@@ -12,7 +12,7 @@ class ConversationCreate(BaseModel):
   title: str | None
 
 class ConversationUpdate(BaseModel):
-  title: str | None
+  title: str | None = None
 
 class ConversationMessageRead(BaseModel):
   id: int

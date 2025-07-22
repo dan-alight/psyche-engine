@@ -10,7 +10,7 @@ class Conversation(Base):
   __tablename__ = "conversation"
 
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
-  title: Mapped[str] = mapped_column(String)
+  title: Mapped[str | None] = mapped_column(String)
   last_updated: Mapped[datetime | None] = mapped_column(DateTime)
 
 class ConversationMessageRole(Enum):

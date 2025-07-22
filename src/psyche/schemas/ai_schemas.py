@@ -30,8 +30,8 @@ class ApiKeyCreate(BaseModel):
   name: str
 
 class ApiKeyUpdate(BaseModel):
-  new_name: str | None = None
-  new_active: bool | None = None
+  name: str | None = None
+  active: bool | None = None
 
 class AiModelRead(BaseModel):
   id: int
