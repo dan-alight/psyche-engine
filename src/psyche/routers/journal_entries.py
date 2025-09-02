@@ -9,15 +9,15 @@ from psyche.models.ai_models import AiProvider, ApiKey, AiModel
 from psyche.models.journal_models import JournalEntry
 from psyche.schemas.journal_schemas import (
     JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)
-from psyche.database import SessionDep, get_async_session
+from psyche.database import SessionDep, get_session
 from psyche.custom_endpoint_creator import CustomEndpointCreator
 
 logger = logging.getLogger("psyche.journal")
 
 tags: list[str | Enum] = ["JournalEntries"]
 
-journal_crud_router = crud_router(
-    session=get_async_session,
+journal_entries_crud_router = crud_router(
+    session=get_session,
     model=JournalEntry,
     create_schema=JournalEntryCreate,
     update_schema=JournalEntryUpdate,
@@ -28,9 +28,9 @@ journal_crud_router = crud_router(
     included_methods=["create", "read_multi", "read", "delete", "update"],
 )
 
-journal_router = APIRouter()
+journal_entries_router = APIRouter()
 
-@journal_router.get("/journal-entries/stats", tags=tags)
+@journal_entries_router.get("/journal-entries/stats", tags=tags)
 async def get_journal_entries_stats(db: SessionDep):
   stmt = select(func.count()).select_from(JournalEntry)
   result = await db.execute(stmt)

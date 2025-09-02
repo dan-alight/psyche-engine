@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from typing import Any
 
 class AiProviderRead(BaseModel):
   id: int
@@ -38,6 +39,7 @@ class AiModelRead(BaseModel):
   name: str
   provider_id: int
   active: bool
+  config: dict[str, Any]
 
   model_config = ConfigDict(from_attributes=True)
 

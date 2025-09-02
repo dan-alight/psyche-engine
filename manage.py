@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from psyche.config import SQLITE_DB_FILE_PATH
 # Import your models so they are registered with the Base
-from psyche.models import Base, AiProvider, ApiKey
+from psyche.models import Base, AiProvider, ApiKey, AiAgent
 
 _SYNC_SQLITE_DB_URL = f"sqlite:///{SQLITE_DB_FILE_PATH}"
 
@@ -160,6 +160,8 @@ def seed_db(file):
       # The magic of the ORM: assign the object to the relationship
       key = ApiKey(provider=provider_obj, **key_data)
       session.add(key)
+
+    session.add(AiAgent())
 
     # 3. Commit the entire transaction
     session.commit()

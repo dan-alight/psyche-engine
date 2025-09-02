@@ -3,7 +3,7 @@ import asyncio
 import uvicorn
 
 from psyche.logconfig import setup_logging
-from psyche.database import run_alembic_upgrade
+from psyche.database import upgrade_database
 from psyche.fastapi_app import app
 from psyche.task_executor import TaskExecutor
 
@@ -12,7 +12,7 @@ logger = logging.getLogger("psyche")
 
 async def main():
   setup_logging()
-  run_alembic_upgrade()
+  upgrade_database()
 
   config = uvicorn.Config(
       app,

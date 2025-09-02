@@ -13,7 +13,8 @@ dependencies = [
     "alembic",
     "aiosqlite",
     "fastcrud",
-    "openai"
+    "openai",
+    "websockets"
 ]
 
 [project.optional-dependencies]
