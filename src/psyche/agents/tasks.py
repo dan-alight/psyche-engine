@@ -75,19 +75,47 @@ async def stream_chat(chat_request: ChatRequest):
       ) for msg in messages
   ]
 
-  client = await get_openai_client(ai_model.provider_id)
-  completion = await client.chat.completions.create(
-      model=ai_model.name, messages=formatted_messages)
-
-  # Store the assistant's reply in the database
+  # Create an empty assistant message to get an ID
   assistant_message = ConversationMessage(
       conversation_id=conversation_id,
-      content=completion.choices[0].message.content,
+      content="",
       role=ConversationMessageRole.ASSISTANT)
   async with SessionLocal() as db:
     db.add(assistant_message)
     await db.commit()
     await db.refresh(assistant_message)
 
+  # Yield a message-read for the new, empty assistant message
+  # This lets the client know a new message has been created and what its ID is
   yield ConversationMessageRead.model_validate(assistant_message).model_dump(
       mode="json")
+
+  client = await get_openai_client(ai_model.provider_id)
+  stream = await client.chat.completions.create(
+      model=ai_model.name,
+      messages=formatted_messages,
+      stream=True,
+  )
+
+  full_content = ""
+  sequence_id = 0
+  async for chunk in stream:
+    delta_content = chunk.choices[0].delta.content
+    if delta_content:
+      full_content += delta_content
+      part = ConversationMessagePart(
+          conversation_message_id=assistant_message.id,
+          sequence_id=sequence_id,
+          content=delta_content,
+          final=chunk.choices[0].finish_reason is not None,
+      )
+      yield part.model_dump(mode="json")
+      sequence_id += 1
+
+  # Update the message in the database with the full content
+  async with SessionLocal() as db:
+    await db.execute(
+        update(ConversationMessage).where(
+            ConversationMessage.id == assistant_message.id).values(
+                content=full_content))
+    await db.commit()
