@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
   yield
 
 app = FastAPI(lifespan=lifespan)
+app.state.tasks_started = 0
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):

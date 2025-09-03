@@ -2,7 +2,8 @@ from enum import Enum
 from fastcrud import crud_router
 from sqlalchemy import select, update
 from psyche.models.ai_models import ApiKey
-from psyche.database import SessionDep, get_session
+from psyche.database import get_session
+from psyche.dependencies import SessionDep
 from psyche.schemas.ai_schemas import (ApiKeyCreate, ApiKeyUpdate, ApiKeyRead)
 from psyche.exceptions import ResourceNotFoundError
 

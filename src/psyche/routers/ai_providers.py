@@ -4,53 +4,12 @@ from fastcrud import FastCRUD, crud_router
 from typing import Annotated
 from sqlalchemy import select, delete
 from psyche.models.ai_models import AiProvider, ApiKey, AiModel
-from psyche.database import SessionDep, get_session
+from psyche.database import get_session
+from psyche.dependencies import SessionDep
 from psyche.schemas.ai_schemas import (
     AiProviderCreate, AiProviderUpdate, AiProviderRead)
 from psyche.custom_endpoint_creator import CustomEndpointCreator
-from psyche.exceptions import ExternalAPIError, ResourceNotFoundError, InvalidStateError
-from openai import AsyncOpenAI
-
-# --- Dependency Injection ---
-
-_openai_client_cache = {}
-
-async def get_openai_client(
-    provider_id: int, db: SessionDep) -> AsyncOpenAI:
-  """
-    Dependency to create and cache an AsyncOpenAI client for a specific provider.
-    """
-  provider = await db.get(AiProvider, provider_id)
-  if not provider:
-    raise ResourceNotFoundError(
-        resource_type="AiProvider", resource_id=provider_id)
-
-  active_api_key = await db.scalar(
-      select(ApiKey).where(
-          ApiKey.provider_id == provider_id, ApiKey.active == True))
-  if not active_api_key:
-    raise InvalidStateError(
-        f"No active API key found for provider ID {provider_id}")
-
-  cached_client, cached_base_url, cached_api_key = _openai_client_cache.get(
-      provider_id, (None, None, None))
-
-  if (cached_client and cached_base_url == provider.base_url
-      and cached_api_key == active_api_key.key_value):
-    return cached_client
-
-  new_client = AsyncOpenAI(
-      base_url=provider.base_url,
-      api_key=active_api_key.key_value,
-  )
-  _openai_client_cache[provider_id] = (
-      new_client, provider.base_url, active_api_key.key_value)
-
-  return new_client
-
-OpenAIDep = Annotated[AsyncOpenAI, Depends(get_openai_client)]
-
-# --- Routes ---
+from psyche.dependencies import OpenAIDep
 
 ai_providers_tags: list[str | Enum] = ["AiProviders"]
 

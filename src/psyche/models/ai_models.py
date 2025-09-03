@@ -48,9 +48,3 @@ class AiModel(Base):
   __table_args__ = (
       UniqueConstraint('provider_id', 'name',
                        name='uq_ai_model_provider_name'), )
-
-class AiAgent(Base):
-  __tablename__ = "ai_agent"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True)
-  primary_model_id: Mapped[int | None] = mapped_column(
-      Integer, ForeignKey("ai_model.id", ondelete="SET NULL"))

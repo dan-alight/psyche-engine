@@ -1,7 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
-from pydantic import BaseModel, Field
-from typing import Union, Literal, Annotated
+from pydantic import BaseModel, ConfigDict, Field, Json
+from typing import Literal, Annotated
 
 class ConversationRead(BaseModel):
   id: int
@@ -28,6 +27,7 @@ class ConversationMessageRead(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
 class ConversationMessageCreate(BaseModel):
+  type: Literal["conversation_message_create"] = "conversation_message_create"
   content: str
   conversation_id: int
   parent_message_id: int | None
@@ -39,6 +39,14 @@ class ConversationMessagePart(BaseModel):
   content: str
   final: bool
 
-ChatSend = Annotated[ConversationMessageRead | ConversationMessagePart,
-                     Field(discriminator="type")]
+class GenerateReplyToExistingMessage(BaseModel):
+  type: Literal[
+      "generate_reply_to_existing_message"] = "generate_reply_to_existing_message"
+  existing_message_id: int
 
+class ChatRequest(BaseModel):
+  action: Annotated[
+      ConversationMessageCreate | GenerateReplyToExistingMessage,
+      Field(discriminator="type"),
+  ]
+  config: dict = {}

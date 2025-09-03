@@ -1,6 +1,4 @@
-import logging
-from typing import Annotated, AsyncGenerator
-from fastapi import Depends
+from typing import AsyncGenerator
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from alembic.config import Config
@@ -30,5 +28,3 @@ SessionLocal = async_sessionmaker(_engine, expire_on_commit=False)
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
   async with SessionLocal() as session:
     yield session
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]

@@ -5,8 +5,8 @@ from fastapi import Query
 from sqlalchemy import select
 from fastcrud import FastCRUD, crud_router
 
-from psyche.database import SessionDep, get_session
-from psyche.agent.tasks import f
+from psyche.database import get_session
+from psyche.dependencies import SessionDep
 from psyche.schemas.chat_schemas import (
     ConversationMessageRead, ConversationRead, ConversationCreate,
     ConversationUpdate)

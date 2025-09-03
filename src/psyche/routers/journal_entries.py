@@ -9,8 +9,9 @@ from psyche.models.ai_models import AiProvider, ApiKey, AiModel
 from psyche.models.journal_models import JournalEntry
 from psyche.schemas.journal_schemas import (
     JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)
-from psyche.database import SessionDep, get_session
+from psyche.database import get_session
 from psyche.custom_endpoint_creator import CustomEndpointCreator
+from psyche.dependencies import SessionDep
 
 logger = logging.getLogger("psyche.journal")
 
