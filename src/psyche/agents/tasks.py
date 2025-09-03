@@ -7,9 +7,10 @@ from psyche.schemas.chat_schemas import ConversationMessageRead, ConversationMes
 from psyche.models.chat_models import ConversationMessageRole, ConversationMessage
 from psyche.models.ai_models import AiModel
 from psyche.database import SessionLocal, get_session
-from psyche.exceptions import InvalidStateError
+from psyche.exceptions import InvalidStateError, ExternalAPIError
 from psyche.openai_clients import get_openai_client
 from openai.types.chat import ChatCompletionMessageParam
+from openai import APIConnectionError
 
 logger = logging.getLogger("psyche.agents")
 
@@ -75,10 +76,21 @@ async def stream_chat(chat_request: ChatRequest):
       ) for msg in messages
   ]
 
+  try:
+    client = await get_openai_client(ai_model.provider_id)
+    stream = await client.chat.completions.create(
+        model=ai_model.name,
+        messages=formatted_messages,
+        stream=True,
+    )
+  except APIConnectionError:
+    raise ExternalAPIError(f"Failed to connect to AI provider")
+
   # Create an empty assistant message to get an ID
   assistant_message = ConversationMessage(
       conversation_id=conversation_id,
       content="",
+      parent_message_id=messages[-1].id if len(messages) > 0 else None,
       role=ConversationMessageRole.ASSISTANT)
   async with SessionLocal() as db:
     db.add(assistant_message)
@@ -89,13 +101,6 @@ async def stream_chat(chat_request: ChatRequest):
   # This lets the client know a new message has been created and what its ID is
   yield ConversationMessageRead.model_validate(assistant_message).model_dump(
       mode="json")
-
-  client = await get_openai_client(ai_model.provider_id)
-  stream = await client.chat.completions.create(
-      model=ai_model.name,
-      messages=formatted_messages,
-      stream=True,
-  )
 
   full_content = ""
   sequence_id = 0

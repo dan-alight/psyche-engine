@@ -1,15 +1,10 @@
 import logging
 import asyncio
-from pydantic import ValidationError
-from fastapi import APIRouter, WebSocket, status
-from starlette.websockets import WebSocketDisconnect, WebSocketState
-from sqlalchemy.inspection import inspect
-from psyche.database import SessionLocal
+from fastapi import APIRouter, WebSocket
 from psyche.agents.tasks import stream_chat
 from psyche.schemas.chat_schemas import ChatRequest
 from psyche.schemas.generic_schemas import TaskStatus, CancelTask
-from psyche.models.chat_models import ConversationMessage, ConversationMessageRole
-from psyche.exceptions import InvalidStateError
+from psyche.exceptions import InvalidStateError, ExternalAPIError
 
 logger = logging.getLogger("psyche.chat")
 active_chat_tasks: dict[int, asyncio.Task] = {}
@@ -48,6 +43,9 @@ async def chat(websocket: WebSocket):
           await websocket.send_json(chunk)
       except asyncio.CancelledError:
         logger.info("Streaming task was cancelled.")
+      except ExternalAPIError as e:
+        logger.error(f"External API error: {e}")
+        await websocket.send_json({"error": "External API error occurred."})
 
     # Create a task to run the streaming process in the background.
     task = asyncio.create_task(stream_and_send())
