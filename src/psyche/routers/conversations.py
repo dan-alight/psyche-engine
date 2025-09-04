@@ -10,6 +10,7 @@ from psyche.dependencies import SessionDep
 from psyche.schemas.chat_schemas import (
     ConversationMessageRead, ConversationRead, ConversationCreate,
     ConversationUpdate)
+from psyche.custom_endpoint_creator import CustomEndpointCreator
 from psyche.models.chat_models import Conversation, ConversationMessage
 
 logger = logging.getLogger("psyche.conversations")
@@ -22,6 +23,7 @@ conversations_crud_router = crud_router(
     create_schema=ConversationCreate,
     update_schema=ConversationUpdate,
     select_schema=ConversationRead,
+    endpoint_creator=CustomEndpointCreator,
     path="/conversations",
     tags=conversations_tags,
     included_methods=["create", "update", "delete"])
