@@ -4,8 +4,8 @@ from typing import Literal, Annotated
 
 class ConversationRead(BaseModel):
   id: int
-  title: str | None
-  last_updated: datetime | None
+  title: str
+  last_updated: datetime
 
   model_config = ConfigDict(from_attributes=True)
 
