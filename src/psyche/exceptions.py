@@ -25,3 +25,6 @@ class ResourceNotFoundError(AppBaseError):
 class InvalidStateError(AppBaseError):
   """Raised when an operation is attempted in an invalid state."""
   pass
+
+class ConfigValidationError(AppBaseError):
+  pass

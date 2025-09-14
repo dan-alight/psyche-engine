@@ -7,12 +7,29 @@ from psyche.schemas.chat_schemas import ConversationMessageRead, ConversationMes
 from psyche.models.chat_models import ConversationMessageRole, ConversationMessage
 from psyche.models.ai_models import AiModel
 from psyche.database import SessionLocal, get_session
-from psyche.exceptions import InvalidStateError, ExternalAPIError
+from psyche.exceptions import InvalidStateError, ExternalAPIError, ConfigValidationError
 from psyche.openai_clients import get_openai_client
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+)
+
 from openai import APIConnectionError
 
 logger = logging.getLogger("psyche.agents")
+
+def _to_openai_message(msg: ConversationMessage) -> ChatCompletionMessageParam:
+  r = msg.role.value
+  if r == "system":
+    return ChatCompletionSystemMessageParam(role="system", content=msg.content)
+  if r == "user":
+    return ChatCompletionUserMessageParam(role="user", content=msg.content)
+  if r == "assistant":
+    return ChatCompletionAssistantMessageParam(
+        role="assistant", content=msg.content)
+  return {"role": r, "content": msg.content}
 
 async def stream_chat(chat_request: ChatRequest):
 
@@ -27,19 +44,21 @@ async def stream_chat(chat_request: ChatRequest):
         await db.commit()
         await db.refresh(user_message)
 
-      conversation_id = user_message.conversation_id
-
       yield ConversationMessageRead.model_validate(user_message).model_dump(
           mode="json")
+
+      conversation_id = user_message.conversation_id
 
     case GenerateReplyToExistingMessage():
       async with SessionLocal() as db:
         existing_message = await db.get(
             ConversationMessage, chat_request.action.existing_message_id)
+
       if not existing_message:
         raise InvalidStateError(
             f"Message with ID {chat_request.action.existing_message_id} not found."
         )
+
       conversation_id = existing_message.conversation_id
 
   # Send the chat history via OpenAI API
@@ -54,10 +73,9 @@ async def stream_chat(chat_request: ChatRequest):
 
     # Validate the config and extract provider-specific settings
     config = chat_request.config
-    logger.info(f"Chat config: {config}")
     ai_model_id = config.get("ai_model_id")
     if not ai_model_id:
-      raise InvalidStateError("AI model ID must be specified in config.")
+      raise ConfigValidationError("AI model ID must be specified in config.")
     result = await db.execute(select(AiModel).where(AiModel.id == ai_model_id))
     ai_model = result.scalar_one_or_none()
     if not ai_model or not ai_model.active:
@@ -66,14 +84,13 @@ async def stream_chat(chat_request: ChatRequest):
 
   # Convert messages to the format required by the provider
   # This assumes there is no branching in the conversation history
-  formatted_messages = [
-      cast(
-          ChatCompletionMessageParam,
-          {
-              "role": msg.role.value,
-              "content": msg.content,
-          },
-      ) for msg in messages
+  formatted_messages: list[ChatCompletionMessageParam] = [
+      ChatCompletionSystemMessageParam(
+          role="system",
+          content=
+          "You are Psyche, an extension of the user's soul into the virtual.",
+      ),
+      *(_to_openai_message(m) for m in messages),
   ]
 
   try:
@@ -96,7 +113,6 @@ async def stream_chat(chat_request: ChatRequest):
     db.add(assistant_message)
     await db.commit()
     await db.refresh(assistant_message)
-
   # Yield a message-read for the new, empty assistant message
   # This lets the client know a new message has been created and what its ID is
   yield ConversationMessageRead.model_validate(assistant_message).model_dump(
