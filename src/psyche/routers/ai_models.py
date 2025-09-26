@@ -1,7 +1,7 @@
 from enum import Enum
 from fastapi import APIRouter
 from sqlalchemy import select
-from psyche.models.ai_models import AiModel
+from psyche.models.openai_api_models import AiModel
 from psyche.dependencies import SessionDep
 from psyche.schemas.ai_schemas import (AiModelRead, AiModelUpdate)
 from psyche.exceptions import ResourceNotFoundError

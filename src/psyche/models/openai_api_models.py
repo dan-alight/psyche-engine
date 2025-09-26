@@ -41,7 +41,6 @@ class AiModel(Base):
   provider_id: Mapped[int] = mapped_column(
       Integer, ForeignKey("ai_provider.id", ondelete="CASCADE"))
   active: Mapped[bool] = mapped_column(Boolean, default=False)
-  config: Mapped[dict] = mapped_column(JSON, default={})
 
   provider: Mapped["AiProvider"] = relationship("AiProvider")
 

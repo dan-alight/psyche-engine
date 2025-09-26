@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from fastcrud import FastCRUD, crud_router
 from typing import Annotated
 from sqlalchemy import select, delete
-from psyche.models.ai_models import AiProvider, ApiKey, AiModel
+from psyche.models.openai_api_models import AiProvider, ApiKey, AiModel
 from psyche.database import get_session
 from psyche.dependencies import SessionDep
 from psyche.schemas.ai_schemas import (

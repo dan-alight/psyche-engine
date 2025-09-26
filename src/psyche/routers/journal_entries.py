@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, update, func
 from fastcrud import FastCRUD, crud_router
-from psyche.models.ai_models import AiProvider, ApiKey, AiModel
+from psyche.models.openai_api_models import AiProvider, ApiKey, AiModel
 from psyche.models.journal_models import JournalEntry
 from psyche.schemas.journal_schemas import (
     JournalEntryCreate, JournalEntryUpdate, JournalEntryRead)

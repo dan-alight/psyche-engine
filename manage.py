@@ -91,12 +91,12 @@ def reset_db():
   END;
   """
   journal_entry_update_trigger = """
-  CREATE TRIGGER update_journal_entry_last_edited_after_update
+  CREATE TRIGGER update_journal_entry_version_after_update
   AFTER UPDATE ON journal_entry
   FOR EACH ROW
   WHEN OLD.content != NEW.content
   BEGIN
-      UPDATE journal_entry SET last_edited = CURRENT_TIMESTAMP
+      UPDATE journal_entry SET version = version + 1
       WHERE id = NEW.id;
   END;
   """

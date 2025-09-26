@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from psyche.models.ai_models import AiProvider, ApiKey
+from psyche.models.openai_api_models import AiProvider, ApiKey
 from psyche.exceptions import ResourceNotFoundError, InvalidStateError
 from openai import AsyncOpenAI
 from psyche.database import SessionLocal
