@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import select, delete, update, func
 from psyche.schemas.chat_schemas import ConversationMessageRead, ConversationMessageCreate, ConversationMessagePart, GenerateReplyToExistingMessage, ChatRequest
 from psyche.models.chat_models import ConversationMessageRole, ConversationMessage
-from psyche.models.ai_models import AiModel
+from psyche.models.openai_api_models import AiModel
 from psyche.database import SessionLocal, get_session
 from psyche.exceptions import InvalidStateError, ExternalAPIError, ConfigValidationError
 from psyche.openai_clients import get_openai_client
