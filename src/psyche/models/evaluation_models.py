@@ -8,12 +8,12 @@ class Evaluation(Base):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
   # an evaluation always corresponds to some specific row in another table, whether a contentful row or a generic grouping entity
+  # (target_table, target_id, evaluation_type) is not unique
   target_table: Mapped[str] = mapped_column(String)
-  target_id: Mapped[int] = mapped_column(Integer)  
+  target_id: Mapped[int] = mapped_column(Integer)
   # target_context provides information about the state of the target that was evaluated
   target_context: Mapped[dict] = mapped_column(JSON)
 
-  # e.g "sentiment", "summary"
+  # e.g "sentiment", "summary", "node_updates", "edge_updates" etc
   evaluation_type: Mapped[str] = mapped_column(String)
-  evaluation_context: Mapped[dict] = mapped_column(JSON)
   data: Mapped[dict] = mapped_column(JSON)

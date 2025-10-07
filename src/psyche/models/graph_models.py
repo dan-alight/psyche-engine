@@ -1,5 +1,5 @@
 from psyche.models.base import Base
-from sqlalchemy import Integer, String, JSON, ForeignKey
+from sqlalchemy import Integer, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 class Graph(Base):
