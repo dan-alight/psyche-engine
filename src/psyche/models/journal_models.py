@@ -10,4 +10,3 @@ class JournalEntry(Base):
   content: Mapped[str] = mapped_column(String)
   created_at: Mapped[datetime] = mapped_column(
       DateTime, server_default=text("CURRENT_TIMESTAMP"))
-  version: Mapped[int] = mapped_column(Integer, default=1)

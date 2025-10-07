@@ -90,22 +90,11 @@ def reset_db():
       WHERE id = OLD.conversation_id AND NEW.conversation_id != OLD.conversation_id;
   END;
   """
-  journal_entry_update_trigger = """
-  CREATE TRIGGER update_journal_entry_version_after_update
-  AFTER UPDATE ON journal_entry
-  FOR EACH ROW
-  WHEN OLD.content != NEW.content
-  BEGIN
-      UPDATE journal_entry SET version = version + 1
-      WHERE id = NEW.id;
-  END;
-  """
 
   with engine.begin() as conn:
     conn.execute(text(conversation_message_delete_trigger))
     conn.execute(text(conversation_message_insert_trigger))
     conn.execute(text(conversation_message_update_trigger))
-    conn.execute(text(journal_entry_update_trigger))
   click.echo("Triggers created.")
 
   click.echo("✅ Database has been reset successfully.")
