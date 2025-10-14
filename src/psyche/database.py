@@ -5,11 +5,11 @@ from alembic.config import Config
 from alembic import command
 from psyche.config import SQLITE_DB_FILE_PATH
 
-_SQLITE_DB_URL = f"sqlite+aiosqlite:///{SQLITE_DB_FILE_PATH}"
-_engine = create_async_engine(_SQLITE_DB_URL)
+SQLITE_DB_URL = f"sqlite+aiosqlite:///{SQLITE_DB_FILE_PATH}"
+engine = create_async_engine(SQLITE_DB_URL)
 
-@event.listens_for(_engine.sync_engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
   """Enable foreign key constraints for SQLite connections."""
   cursor = dbapi_connection.cursor()
   cursor.execute("PRAGMA foreign_keys=ON")
@@ -22,7 +22,7 @@ def upgrade_database():
   alembic_cfg = Config("alembic.ini")
   command.upgrade(alembic_cfg, "head")
 
-SessionLocal = async_sessionmaker(_engine, expire_on_commit=False)
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 # --- Dependency Injection ---
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

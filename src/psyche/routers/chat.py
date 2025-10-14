@@ -8,6 +8,7 @@ from psyche.exceptions import InvalidStateError, ExternalAPIError
 
 logger = logging.getLogger("psyche.chat")
 active_chat_tasks: dict[int, asyncio.Task] = {}
+tasks_started = 0
 
 chat_router = APIRouter()
 
@@ -29,6 +30,7 @@ async def cancel_chat_generation(cancel_task: CancelTask):
 
 @chat_router.websocket("/chat")
 async def chat(websocket: WebSocket):
+  global tasks_started
   """WebSocket endpoint for real-time communication."""
 
   await websocket.accept()
@@ -51,9 +53,9 @@ async def chat(websocket: WebSocket):
     task = asyncio.create_task(stream_and_send())
 
     # Store the task so the /cancel endpoint can find it.
-    task_id = websocket.app.state.tasks_started
+    task_id = tasks_started
     active_chat_tasks[task_id] = task
-    websocket.app.state.tasks_started += 1
+    tasks_started += 1
 
     # Return the TaskStatus
     await websocket.send_json(TaskStatus(id=task_id).model_dump(mode="json"))

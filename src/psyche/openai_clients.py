@@ -4,7 +4,7 @@ from psyche.exceptions import ResourceNotFoundError, InvalidStateError
 from openai import AsyncOpenAI
 from psyche.database import SessionLocal
 
-_openai_client_cache = {}
+openai_client_cache = {}
 
 async def get_openai_client(provider_id: int) -> AsyncOpenAI:
   async with SessionLocal() as db:
@@ -20,7 +20,7 @@ async def get_openai_client(provider_id: int) -> AsyncOpenAI:
       raise InvalidStateError(
           f"No active API key found for provider ID {provider_id}")
 
-  cached_client, cached_base_url, cached_api_key = _openai_client_cache.get(
+  cached_client, cached_base_url, cached_api_key = openai_client_cache.get(
       provider_id, (None, None, None))
 
   if (cached_client and cached_base_url == provider.base_url
@@ -31,7 +31,7 @@ async def get_openai_client(provider_id: int) -> AsyncOpenAI:
       base_url=provider.base_url,
       api_key=active_api_key.key_value,
   )
-  _openai_client_cache[provider_id] = (
+  openai_client_cache[provider_id] = (
       new_client, provider.base_url, active_api_key.key_value)
 
   return new_client

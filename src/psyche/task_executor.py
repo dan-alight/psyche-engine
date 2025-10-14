@@ -1,4 +1,4 @@
-from typing import Callable, Coroutine, Any, Tuple
+from typing import Callable, Coroutine, Any
 import logging
 import asyncio
 
@@ -19,7 +19,11 @@ class TaskExecutor():
     await self._task_queue.put(task_package)
 
   async def _task_wrapper(
-      self, task_callable: Callable[..., Coroutine], args: Tuple, kwargs: dict):
+      self,
+      task_callable: Callable[..., Coroutine],
+      args: tuple[Any, ...],
+      kwargs: dict[str, Any],
+  ):
     """
     A wrapper that executes the task and logs any exceptions.
     """
@@ -29,7 +33,8 @@ class TaskExecutor():
     except Exception:
       logger.exception(f"Exception in task {task_callable.__name__}")
     finally:
-      logger.info(f"Finished task: {task_callable.__name__}")
+      logger.info(
+          f"Finished task (completed or cancelled): {task_callable.__name__}")
 
   async def run(self):
     """

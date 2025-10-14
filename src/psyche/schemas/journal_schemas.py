@@ -8,7 +8,6 @@ class JournalEntryRead(BaseModel):
   id: int
   content: str
   created_at: datetime
-  version: int
 
 class JournalEntryUpdate(BaseModel):
   content: str | None = None

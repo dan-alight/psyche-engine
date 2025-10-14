@@ -7,7 +7,7 @@ from psyche.database import upgrade_database
 from psyche.fastapi_app import app
 from psyche.task_executor import TaskExecutor
 
-_WEBSERVER_PORT = 5010
+WEBSERVER_PORT = 5010
 logger = logging.getLogger("psyche")
 
 async def main():
@@ -16,7 +16,7 @@ async def main():
 
   config = uvicorn.Config(
       app,
-      port=_WEBSERVER_PORT,
+      port=WEBSERVER_PORT,
       log_config=None,
   )
   server = uvicorn.Server(config)

@@ -95,31 +95,6 @@ def setup_logging():
   init(autoreset=True)
   logging.config.dictConfig(LOG_CONFIG)
 
-def log_listener_process(queue: Queue) -> None:
-  """
-    Listens for log records on a queue and processes them.
-
-    This function runs in a separate process. It configures its own
-    logging (using the original dictConfig) and then enters a loop
-    to fetch records from the queue and handle them.
-    """
-  signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-  # Configure logging for this listener process
-  setup_logging()
-  listener_logger = logging.getLogger()
-
-  while True:
-    try:
-      record = queue.get()
-      if record is None:
-        break
-      listener_logger.handle(record)
-    except Exception:
-      import sys, traceback
-      print('Problem in log listener:', file=sys.stderr)
-      traceback.print_exc(file=sys.stderr)
-
 def setup_worker_logging(queue: Queue) -> None:
   """
     Configures logging for a worker process to send logs to a queue.
