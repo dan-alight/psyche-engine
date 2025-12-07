@@ -1,0 +1,10 @@
+# Folders
+.venv
+psyche_engine.egg-info
+
+# File extensions
+*.pyc
+
+# Files
+db.sqlite
+psyche.log
