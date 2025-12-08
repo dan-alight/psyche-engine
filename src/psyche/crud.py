@@ -21,7 +21,7 @@ def add_crud_routes(
     result = await db.execute(stmt)
     return result.scalars().all()
 
-  @router.get("{id}", response_model=read_schema)
+  @router.get("/{id}", response_model=read_schema)
   async def read_one(id: int, db: SessionDep):
     stmt = select(model_class).where(model_class.id == id)
     result = await db.execute(stmt)
@@ -40,7 +40,7 @@ def add_crud_routes(
 
   create.__annotations__["request"] = create_schema
 
-  @router.patch("{id}", response_model=read_schema)
+  @router.patch("/{id}", response_model=read_schema)
   async def update(id: int, request: BaseModel, db: SessionDep):
     stmt = select(model_class).where(model_class.id == id)
     result = await db.execute(stmt)
@@ -56,7 +56,7 @@ def add_crud_routes(
 
   update.__annotations__["request"] = update_schema
 
-  @router.delete("{id}")
+  @router.delete("/{id}")
   async def delete(id: int, db: SessionDep):
     stmt = select(model_class).where(model_class.id == id)
     result = await db.execute(stmt)

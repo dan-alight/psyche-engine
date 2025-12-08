@@ -6,4 +6,4 @@ class Goal(Base, IDMixin):
   __tablename__ = "goal"
 
   title: Mapped[str] = mapped_column()
-  description: Mapped[str | None] = mapped_column()
+  description: Mapped[str] = mapped_column()
