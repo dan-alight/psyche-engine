@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from psyche.endpoints.goals import router as goals_router
+from psyche.endpoints.openai_api_providers import router as openai_api_providers_router
+from psyche.endpoints.openai_api_keys import router as openai_api_keys_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,3 +25,5 @@ app.add_middleware(
     allow_headers=["*"])
 
 app.include_router(goals_router)
+app.include_router(openai_api_providers_router)
+app.include_router(openai_api_keys_router)
