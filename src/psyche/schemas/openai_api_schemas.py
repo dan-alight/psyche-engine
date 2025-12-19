@@ -25,11 +25,8 @@ class OpenAiApiKeyRead(BaseModel):
 
 class OpenAiApiKeyCreate(BaseModel):
   key: str
-  active: bool = True
 
 class OpenAiApiKeyUpdate(BaseModel):
-  key: str | None = None
-  provider_id: int | None = None
   active: bool | None = None
 
 class OpenAiApiModelRead(BaseModel):
@@ -42,9 +39,6 @@ class OpenAiApiModelRead(BaseModel):
 
 class OpenAiApiModelCreate(BaseModel):
   name: str
-  bookmarked: bool = False
 
 class OpenAiApiModelUpdate(BaseModel):
-  name: str | None = None
-  provider_id: int | None = None
   bookmarked: bool | None = None

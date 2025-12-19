@@ -2,7 +2,6 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from psyche.models.base import Base
 
 SQLITE_DB_FILE_NAME = "db.sqlite"
 SQLITE_DB_URL = f"sqlite+aiosqlite:///{SQLITE_DB_FILE_NAME}"

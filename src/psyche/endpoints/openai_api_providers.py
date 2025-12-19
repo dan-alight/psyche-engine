@@ -1,21 +1,22 @@
+from enum import Enum
 from fastapi import APIRouter, Query
 from sqlalchemy import select, delete
 from psyche.fastapi_deps import SessionDep, OpenAiDep
 from psyche.models.openai_api_models import OpenAiApiProvider, OpenAiApiKey, OpenAiApiModel
 from psyche.schemas.openai_api_schemas import (
-    OpenAiApiProviderCreate,
-    OpenAiApiProviderRead,
-    OpenAiApiProviderUpdate,
-    OpenAiApiKeyCreate,
-    OpenAiApiKeyRead,
-    OpenAiApiKeyUpdate,
-    OpenAiApiModelRead,
-)
+    OpenAiApiProviderCreate, OpenAiApiProviderRead, OpenAiApiProviderUpdate,
+    OpenAiApiKeyCreate, OpenAiApiKeyRead, OpenAiApiKeyUpdate,
+    OpenAiApiModelRead, OpenAiApiModelCreate, OpenAiApiModelUpdate)
 from psyche.crud import add_crud_routes
 
-router = APIRouter(prefix="/openai_api_providers")
+router = APIRouter(prefix="/openai-api-providers")
 
-@router.get("/{pid}/models", response_model=list[OpenAiApiModelRead])
+openai_api_models_tags: list[str | Enum] = ["OpenAI API Models"]
+
+@router.get(
+    "/{pid}/models",
+    response_model=list[OpenAiApiModelRead],
+    tags=openai_api_models_tags)
 async def get_models(
     pid: int, db: SessionDep, client: OpenAiDep, refresh: bool = Query(False)):
   if refresh:
@@ -38,27 +39,26 @@ async def get_models(
               OpenAiApiModel.name.in_(dropped_names)))
     await db.commit()
 
-    result = await db.scalars(
-        select(OpenAiApiModel).where(OpenAiApiModel.provider_id == pid))
-    return result.all()
-
-  else:
-    result = await db.scalars(
-        select(OpenAiApiModel).where(OpenAiApiModel.provider_id == pid))
-    return result.all()
+  result = await db.scalars(
+      select(OpenAiApiModel).where(OpenAiApiModel.provider_id == pid))
+  return result.all()
 
 add_crud_routes(
-    router, OpenAiApiProvider, OpenAiApiProviderRead, OpenAiApiProviderCreate,
-    OpenAiApiProviderUpdate)
+    router=router,
+    model=OpenAiApiProvider,
+    read_schema=OpenAiApiProviderRead,
+    create_schema=OpenAiApiProviderCreate,
+    update_schema=OpenAiApiProviderUpdate,
+    tags=["OpenAI API Providers"])
 
 add_crud_routes(
-    router,
-    OpenAiApiKey,
-    OpenAiApiKeyRead,
-    OpenAiApiKeyCreate,
-    OpenAiApiKeyUpdate,
+    router=router,
+    model=OpenAiApiKey,
+    read_schema=OpenAiApiKeyRead,
+    create_schema=OpenAiApiKeyCreate,
+    update_schema=OpenAiApiKeyUpdate,
     prefix="/{pid}/keys",
     tags=["OpenAI API Keys"],
-    methods=["read_all", "create"],
+    methods=["create"],
     url_param_to_field={"pid": "provider_id"},
 )
