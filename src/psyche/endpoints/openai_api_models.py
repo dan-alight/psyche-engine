@@ -24,7 +24,6 @@ add_crud_routes(
     router=router,
     model=OpenAiApiModel,
     read_schema=OpenAiApiModelRead,
-    create_schema=OpenAiApiModelCreate,
     update_schema=OpenAiApiModelUpdate,
     tags=["OpenAI API Models"],
     methods=["read_all", "update"],

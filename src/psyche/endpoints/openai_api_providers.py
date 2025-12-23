@@ -13,31 +13,30 @@ router = APIRouter(prefix="/openai-api-providers")
 
 openai_api_models_tags: list[str | Enum] = ["OpenAI API Models"]
 
-@router.get(
-    "/{pid}/models",
+@router.post(
+    "/{pid}/models/refresh",
     response_model=list[OpenAiApiModelRead],
     tags=openai_api_models_tags)
-async def get_models(
-    pid: int, db: SessionDep, client: OpenAiDep, refresh: bool = Query(False)):
-  if refresh:
-    remote_model_list = await client.models.list()
-    remote_model_names = {model.id for model in remote_model_list.data}
-    result = await db.scalars(
-        select(OpenAiApiModel.name).where(OpenAiApiModel.provider_id == pid))
-    db_model_names = set(result)
+async def refresh_models(pid: int, db: SessionDep, client: OpenAiDep):
 
-    new_names = remote_model_names - db_model_names
-    dropped_names = db_model_names - remote_model_names
+  remote_model_list = await client.models.list()
+  remote_model_names = {model.id for model in remote_model_list.data}
+  result = await db.scalars(
+      select(OpenAiApiModel.name).where(OpenAiApiModel.provider_id == pid))
+  db_model_names = set(result)
 
-    if new_names:
-      db.add_all(
-          [OpenAiApiModel(provider_id=pid, name=name) for name in new_names])
-    if dropped_names:
-      await db.execute(
-          delete(OpenAiApiModel).where(
-              OpenAiApiModel.provider_id == pid,
-              OpenAiApiModel.name.in_(dropped_names)))
-    await db.commit()
+  new_names = remote_model_names - db_model_names
+  dropped_names = db_model_names - remote_model_names
+
+  if new_names:
+    db.add_all(
+        [OpenAiApiModel(provider_id=pid, name=name) for name in new_names])
+  if dropped_names:
+    await db.execute(
+        delete(OpenAiApiModel).where(
+            OpenAiApiModel.provider_id == pid,
+            OpenAiApiModel.name.in_(dropped_names)))
+  await db.commit()
 
   result = await db.scalars(
       select(OpenAiApiModel).where(OpenAiApiModel.provider_id == pid))
@@ -54,9 +53,7 @@ add_crud_routes(
 add_crud_routes(
     router=router,
     model=OpenAiApiKey,
-    read_schema=OpenAiApiKeyRead,
     create_schema=OpenAiApiKeyCreate,
-    update_schema=OpenAiApiKeyUpdate,
     prefix="/{pid}/keys",
     tags=["OpenAI API Keys"],
     methods=["create"],

@@ -14,17 +14,24 @@ def add_crud_routes(
     *,
     router: APIRouter,
     model: Type[ModelType],
-    read_schema: Type[BaseModel],
-    create_schema: Type[BaseModel],
-    update_schema: Type[BaseModel],
+    read_schema: Type[BaseModel] | None = None,
+    create_schema: Type[BaseModel] | None = None,
+    update_schema: Type[BaseModel] | None = None,
     prefix: str = "",
     tags: list[str | Enum] | None = None,
     methods: list[AllowedMethods] = [
         "read_all", "read_one", "create", "update", "delete"
     ],
-    url_param_to_field: dict[str, str] = {}):
+    url_param_to_field: dict[str, str] = {},
+    query_param_to_field: dict[str, str] = {},
+) -> None:
 
-  if "read_all" in methods:
+  def get_typed_value(raw_val: str, column):
+    if isinstance(column.type, Integer):
+      return int(raw_val)
+    return raw_val
+
+  if "read_all" in methods and read_schema is not None:
 
     @router.get(f"{prefix}", response_model=list[read_schema], tags=tags)
     async def read_all(
@@ -34,16 +41,19 @@ def add_crud_routes(
       for url_param, field_name in url_param_to_field.items():
         raw_val = request.path_params[url_param]
         column = getattr(model, field_name)
-        if isinstance(column.type, Integer):
-          stmt = stmt.where(column == int(raw_val))
-        else:
-          stmt = stmt.where(column == raw_val)
+        stmt = stmt.where(column == get_typed_value(raw_val, column))
 
+      for query_param, field_name in query_param_to_field.items():
+        raw_val = request.query_params.get(query_param)
+        if raw_val is not None:
+          column = getattr(model, field_name)
+          stmt = stmt.where(column == get_typed_value(raw_val, column))
+          
       stmt = stmt.offset(skip).limit(limit)
       result = await db.scalars(stmt)
       return result.all()
 
-  if "read_one" in methods:
+  if "read_one" in methods and read_schema is not None:
 
     @router.get(f"{prefix}/{{id}}", response_model=read_schema, tags=tags)
     async def read_one(id: int, db: SessionDep):
@@ -52,7 +62,7 @@ def add_crud_routes(
         raise HTTPException(status_code=404, detail="Item not found")
       return item
 
-  if "create" in methods:
+  if "create" in methods and create_schema is not None:
 
     @router.post(f"{prefix}", response_model=read_schema, tags=tags)
     async def create(request: Request, item: BaseModel, db: SessionDep):
@@ -74,7 +84,7 @@ def add_crud_routes(
 
     create.__annotations__["item"] = create_schema
 
-  if "update" in methods:
+  if "update" in methods and update_schema is not None:
 
     @router.patch(f"{prefix}/{{id}}", response_model=read_schema, tags=tags)
     async def update(id: int, item: BaseModel, db: SessionDep):

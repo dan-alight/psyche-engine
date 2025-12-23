@@ -13,7 +13,6 @@ add_crud_routes(
     router=router,
     model=OpenAiApiKey,
     read_schema=OpenAiApiKeyRead,
-    create_schema=OpenAiApiKeyCreate,
     update_schema=OpenAiApiKeyUpdate,
     tags=["OpenAI API Keys"],
     methods=["read_one", "read_all", "update", "delete"],
