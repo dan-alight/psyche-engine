@@ -35,7 +35,10 @@ def add_crud_routes(
 
     @router.get(f"{prefix}", response_model=list[read_schema], tags=tags)
     async def read_all(
-        request: Request, db: SessionDep, skip: int = 0, limit: int = 100):
+        request: Request,
+        db: SessionDep,
+        skip: int = 0,
+        limit: int | None = None):
       stmt = select(model)
 
       for url_param, field_name in url_param_to_field.items():
@@ -48,8 +51,11 @@ def add_crud_routes(
         if raw_val is not None:
           column = getattr(model, field_name)
           stmt = stmt.where(column == get_typed_value(raw_val, column))
-          
-      stmt = stmt.offset(skip).limit(limit)
+
+      stmt = stmt.offset(skip)
+      if limit is not None:
+        stmt = stmt.limit(limit)
+
       result = await db.scalars(stmt)
       return result.all()
 

@@ -1,10 +1,14 @@
+import os
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from dotenv import load_dotenv
 
-SQLITE_DB_FILE_NAME = "db.sqlite"
-SQLITE_DB_URL = f"sqlite+aiosqlite:///{SQLITE_DB_FILE_NAME}"
+load_dotenv()
+
+SQLITE_DB_FILENAME = os.getenv("SQLITE_DB_FILENAME", "db.sqlite")
+SQLITE_DB_URL = f"sqlite+aiosqlite:///{SQLITE_DB_FILENAME}"
 
 engine = create_async_engine(SQLITE_DB_URL)
 

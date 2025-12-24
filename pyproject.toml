@@ -12,5 +12,16 @@ dependencies = [
     "alembic",
     "aiosqlite",
     "openai",
+    "Jinja2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "jupyterlab",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+psyche = ["prompts/*.j2"]

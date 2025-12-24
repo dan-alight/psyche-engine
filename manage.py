@@ -5,27 +5,37 @@ from psyche.models.openai_api_models import OpenAiApiProvider, OpenAiApiKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-SQLITE_DB_FILE_NAME = "db.sqlite"
-SQLITE_DB_URL = f"sqlite:///{SQLITE_DB_FILE_NAME}"
-
 @click.group()
-def cli():
-  pass
+@click.option(
+    "--db",
+    default="db.sqlite",
+    help="The SQLite database filename to use.",
+)
+@click.pass_context
+def cli(ctx, db):
+  """Manage the Psyche database."""
+  ctx.ensure_object(dict)
+  SQLITE_DB_FILENAME = db
+  SQLITE_DB_URL = f"sqlite:///{SQLITE_DB_FILENAME}"
+  ctx.obj["db_filename"] = SQLITE_DB_FILENAME
+  ctx.obj["db_url"] = SQLITE_DB_URL
 
 @cli.command()
-def create_tables():
+@click.pass_context
+def create_tables(ctx):
   """Create the database tables."""
-  engine = create_engine(SQLITE_DB_URL)
+  engine = create_engine(ctx.obj["db_url"])
   Base.metadata.create_all(engine)
-  click.echo("Database tables created.")
+  click.echo(f"Database tables created for {ctx.obj['db_filename']}.")
 
 @cli.command()
 @click.option("--file", default="seed.json")
-def seed_tables(file):
+@click.pass_context
+def seed_tables(ctx, file):
   """
   Docstring for seed_tables
   """
-  engine = create_engine(SQLITE_DB_URL)
+  engine = create_engine(ctx.obj["db_url"])
   Session = sessionmaker(engine)
   click.echo(f"Seeding data from {file}.")
   with open(file, 'r') as open_file:

@@ -1,6 +1,6 @@
 import asyncio
-from psyche import job_manager
 import uvicorn
+from psyche import job_manager
 from psyche.fastapi_app import app
 from psyche.log_config import start_logging
 from psyche.database import run_migrations
