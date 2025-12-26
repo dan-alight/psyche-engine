@@ -9,7 +9,7 @@ class Goal(Base, IDMixin, TimestampMixin):
   title: Mapped[str] = mapped_column()
   description: Mapped[str] = mapped_column()
   initial_progress: Mapped[str] = mapped_column()
-  strategy_generation_guidelines: Mapped[str] = mapped_column()
+  strategy_guidelines: Mapped[str] = mapped_column()
 
 class GoalProgressUpdate(Base, IDMixin, TimestampMixin):
   __tablename__ = "goal_progress_update"
