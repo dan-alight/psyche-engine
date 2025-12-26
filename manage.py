@@ -29,16 +29,16 @@ def create_tables(ctx):
   click.echo(f"Database tables created for {ctx.obj['db_filename']}.")
 
 @cli.command()
-@click.option("--file", default="seed.json")
+@click.option("--seed", default="seed.json")
 @click.pass_context
-def seed_tables(ctx, file):
+def seed_tables(ctx, seed):
   """
   Docstring for seed_tables
   """
   engine = create_engine(ctx.obj["db_url"])
   Session = sessionmaker(engine)
-  click.echo(f"Seeding data from {file}.")
-  with open(file, 'r') as open_file:
+  click.echo(f"Seeding data from {seed}.")
+  with open(seed, 'r') as open_file:
     data = json.load(open_file)
   with Session() as session:
     providers: dict[str, OpenAiApiProvider] = {}
@@ -57,6 +57,13 @@ def seed_tables(ctx, file):
       key = OpenAiApiKey(provider_id=provider.id, **key_data)
       session.add(key)
     session.commit()
+
+@cli.command()
+@click.option("--seed", default="seed.json")
+@click.pass_context
+def init_db(ctx, seed):
+  ctx.invoke(create_tables)
+  ctx.invoke(seed_tables, seed=seed)
 
 if __name__ == "__main__":
   cli()

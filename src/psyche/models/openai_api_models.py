@@ -33,12 +33,12 @@ class OpenAiApiModel(Base, IDMixin):
 
   provider: Mapped["OpenAiApiProvider"] = relationship()
 
-def deactivate_other_keys(mapper, connection, target):
+def _deactivate_other_keys(mapper, connection, target):
   if target.active:
     stmt = update(OpenAiApiKey).where(
         OpenAiApiKey.provider_id == target.provider_id, OpenAiApiKey.id
         != target.id, OpenAiApiKey.active == True).values(active=False)
     connection.execute(stmt)
 
-event.listen(OpenAiApiKey, "before_insert", deactivate_other_keys)
-event.listen(OpenAiApiKey, "before_update", deactivate_other_keys)
+event.listen(OpenAiApiKey, "before_insert", _deactivate_other_keys)
+event.listen(OpenAiApiKey, "before_update", _deactivate_other_keys)

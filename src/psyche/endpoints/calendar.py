@@ -14,14 +14,14 @@ router = APIRouter(prefix="/calendar")
 
 calendar_tags: list[str | Enum] = ["Calendar"]
 
-@router.post("/generate", response_model=JobRead, tags=calendar_tags)
+@router.post(":generate", response_model=JobRead, tags=calendar_tags)
 async def generate(
     body: CalendarGenerationRequest,
     job_manager: JobManagerDep,
     date: str = Query(
         ...,
         description=
-        "Date for which to generate the calendar in ISO format (YYYY-MM-DD)")):
+        "Date in ISO format (YYYY-MM-DD)")):
   coro = partial(generate_calendar, date=date, request=body)
   return job_manager.submit_job(coro)
 
