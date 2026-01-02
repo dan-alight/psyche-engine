@@ -74,7 +74,7 @@ class JobManager:
     return self._job_read_dict.get(job_id)
 
   def get_jobs(self) -> list[JobRead]:
-    return list(self._job_ids_deque)
+    return list(self._job_read_dict.values())
 
   def get_jobs_by_ids(self, ids) -> list[JobRead]:
     return [self._job_read_dict[i] for i in ids if i in self._job_read_dict]

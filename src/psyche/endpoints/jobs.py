@@ -7,7 +7,7 @@ router = APIRouter(prefix="/jobs")
 
 jobs_tags: list[str | Enum] = ["Jobs"]
 
-@router.get("/", response_model=list[JobRead], tags=jobs_tags)
+@router.get("", response_model=list[JobRead], tags=jobs_tags)
 async def get_jobs(job_manager: JobManagerDep):
   return job_manager.get_jobs()
 
