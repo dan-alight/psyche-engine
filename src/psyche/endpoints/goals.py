@@ -2,7 +2,7 @@ from enum import Enum
 from fastapi import APIRouter
 from psyche.models.goal_models import Goal
 from psyche.schemas.goal_schemas import GoalCreate, GoalRead, GoalUpdate
-from psyche.schemas.common_schemas import JobRead
+from psyche.schemas.job_schemas import JobRead
 from psyche.crud import add_crud_routes
 from psyche.fastapi_deps import JobManagerDep
 from psyche.services.strategy import generate_strategy

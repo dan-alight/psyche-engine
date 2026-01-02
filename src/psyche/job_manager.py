@@ -4,7 +4,7 @@ from contextvars import ContextVar
 from collections.abc import Awaitable, Callable
 from collections import deque
 from typing import Any
-from psyche.schemas.common_schemas import JobRead
+from psyche.schemas.job_schemas import JobRead
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class JobManager:
     self._job_queue = asyncio.Queue(maxsize=self.job_queue_size)
 
     # Job history
-    self._job_read_deque = deque(maxlen=self.history_size)
+    self._job_ids_deque = deque(maxlen=self.history_size)
     self._job_read_dict: dict[int, JobRead] = {}
 
     self._semaphore = asyncio.Semaphore(self.max_concurrent_jobs)
@@ -34,11 +34,11 @@ class JobManager:
       token = current_job_id.set(job_read.id)
       try:
         await job_coro()
-        job_read.status = "completed"
+        job_read.status = "done"
         logger.info(f"Job {job_read.id} completed successfully.")
       except Exception as e:
         logger.exception(f"Job {job_read.id} failed with exception: {e}")
-        job_read.status = "failed"
+        job_read.status = "error"
         job_read.info = str(e)
       finally:
         current_job_id.reset(token)
@@ -57,21 +57,31 @@ class JobManager:
     try:
       self._job_queue.put_nowait((job_coro, job_read))
 
-      if len(self._job_read_deque) == self._job_read_deque.maxlen:
-        oldest_job_id = self._job_read_deque[0]
+      if len(self._job_ids_deque) == self._job_ids_deque.maxlen:
+        oldest_job_id = self._job_ids_deque[0]
         self._job_read_dict.pop(oldest_job_id)
 
-      self._job_read_deque.append(job_read.id)
+      self._job_ids_deque.append(job_read.id)
       self._job_read_dict[job_read.id] = job_read
 
     except asyncio.QueueFull:
-      job_read.status = "failed"
+      job_read.status = "error"
       job_read.info = "Job queue is full."
 
     return job_read
 
   def get_job(self, job_id: int) -> JobRead | None:
     return self._job_read_dict.get(job_id)
+
+  def get_jobs(self) -> list[JobRead]:
+    return list(self._job_ids_deque)
+
+  def get_jobs_by_ids(self, ids) -> list[JobRead]:
+    return [self._job_read_dict[i] for i in ids if i in self._job_read_dict]
+
+  def update_job(self, job_read: JobRead) -> None:
+    if job_read.id in self._job_read_dict:
+      self._job_read_dict[job_read.id] = job_read
 
 job_manager = JobManager()
 

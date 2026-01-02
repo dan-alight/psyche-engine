@@ -1,11 +1,10 @@
 from enum import Enum
 from functools import partial
-from sqlalchemy import select
 from fastapi import APIRouter, Query
 from psyche.models.calendar_models import Activity
 from psyche.schemas.calendar_schemas import (
     ActivityRead, ActivityCreate, ActivityUpdate, CalendarGenerationRequest)
-from psyche.schemas.common_schemas import JobRead
+from psyche.schemas.job_schemas import JobRead
 from psyche.services.calendar import generate_calendar
 from psyche.fastapi_deps import JobManagerDep, SessionDep
 from psyche.crud import add_crud_routes
