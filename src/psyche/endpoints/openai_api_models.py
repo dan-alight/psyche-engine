@@ -11,15 +11,6 @@ from psyche.fastapi_deps import SessionDep
 
 router = APIRouter(prefix="/openai-api-models")
 
-@router.get(
-    "/bookmarked",
-    response_model=list[OpenAiApiModelRead],
-    tags=["OpenAI API Models"])
-async def get_bookmarked_models(db: SessionDep):
-  result = await db.scalars(
-      select(OpenAiApiModel).where(OpenAiApiModel.bookmarked == True))
-  return result.all()
-
 add_crud_routes(
     router=router,
     model=OpenAiApiModel,

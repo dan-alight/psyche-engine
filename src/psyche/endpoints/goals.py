@@ -1,7 +1,8 @@
 from enum import Enum
+from functools import partial
 from fastapi import APIRouter
 from psyche.models.goal_models import Goal
-from psyche.schemas.goal_schemas import GoalCreate, GoalRead, GoalUpdate
+from psyche.schemas.goal_schemas import GoalCreate, GoalRead, GoalUpdate, StrategyGenerationRequest
 from psyche.schemas.job_schemas import JobRead
 from psyche.crud import add_crud_routes
 from psyche.fastapi_deps import JobManagerDep
@@ -12,8 +13,9 @@ router = APIRouter(prefix="/goals")
 goals_tags: list[str | Enum] = ["Goals"]
 
 @router.post("/{id}/strategy:generate", response_model=JobRead, tags=goals_tags)
-async def generate(job_manager: JobManagerDep):
-  coro = generate_strategy
+async def generate(
+    id: int, body: StrategyGenerationRequest, job_manager: JobManagerDep):
+  coro = partial(generate_strategy, id=id, request=body)
   return job_manager.submit_job(coro)
 
 add_crud_routes(

@@ -20,3 +20,6 @@ class GoalUpdate(BaseModel):
   description: str | None = None
   initial_progress: str | None = None
   strategy_guidelines: str | None = None
+
+class StrategyGenerationRequest(BaseModel):
+  model_id: int
