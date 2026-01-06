@@ -12,4 +12,4 @@ from sqlalchemy import select
 
 async def generate_calendar(
     date: str, request: CalendarGenerationRequest) -> None:
-  await asyncio.sleep(10)
+  await asyncio.sleep(5)

@@ -1,9 +1,9 @@
 from openai import AsyncOpenAI
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from psyche.database import SessionLocal
 from psyche.models.openai_api_models import OpenAiApiKey
+from psyche.exceptions import ResourceNotFoundError
 
 clients: dict[int, AsyncOpenAI] = {}
 
@@ -13,7 +13,7 @@ async def get_openai_client(pid: int) -> AsyncOpenAI:
         select(OpenAiApiKey).options(selectinload(OpenAiApiKey.provider)).where(
             OpenAiApiKey.provider_id == pid, OpenAiApiKey.active))
     if not api_key:
-      raise HTTPException(status_code=404, detail="No active api key")
+      raise ResourceNotFoundError()
     provider = api_key.provider
 
   client = clients.get(pid, None)

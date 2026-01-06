@@ -23,3 +23,8 @@ class GoalUpdate(BaseModel):
 
 class StrategyGenerationRequest(BaseModel):
   model_id: int
+
+class GoalStrategyRead(BaseModel):
+  id: int  
+  goal_id: int
+  strategy: str

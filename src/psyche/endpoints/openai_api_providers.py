@@ -1,12 +1,15 @@
 from enum import Enum
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from sqlalchemy import select, delete
 from psyche.fastapi_deps import SessionDep, OpenAiDep
 from psyche.models.openai_api_models import OpenAiApiProvider, OpenAiApiKey, OpenAiApiModel
 from psyche.schemas.openai_api_schemas import (
-    OpenAiApiProviderCreate, OpenAiApiProviderRead, OpenAiApiProviderUpdate,
-    OpenAiApiKeyCreate, OpenAiApiKeyRead, OpenAiApiKeyUpdate,
-    OpenAiApiModelRead, OpenAiApiModelCreate, OpenAiApiModelUpdate)
+    OpenAiApiProviderCreate,
+    OpenAiApiProviderRead,
+    OpenAiApiProviderUpdate,
+    OpenAiApiKeyCreate,
+    OpenAiApiModelRead,
+)
 from psyche.crud import add_crud_routes
 
 router = APIRouter(prefix="/openai-api-providers")
