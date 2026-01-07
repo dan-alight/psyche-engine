@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from psyche.models.base import Base
 from psyche.models.mixins import IDMixin, TimestampMixin
 
@@ -21,5 +21,5 @@ class GoalProgressUpdate(Base, IDMixin, TimestampMixin):
 class GoalStrategy(Base, IDMixin):
   __tablename__ = "goal_strategy"
   goal_id: Mapped[int] = mapped_column(
-      ForeignKey("goal.id", ondelete="CASCADE"))  
+      ForeignKey("goal.id", ondelete="CASCADE"), unique=True)
   strategy: Mapped[str] = mapped_column()

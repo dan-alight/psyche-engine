@@ -32,10 +32,15 @@ async def generate_strategy(id: int, request: StrategyGenerationRequest):
           "content": prompt
       }],
   )
-  content = res.choices[0].message.content
-  if content:
-    strategy = re.sub(
-        r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-    async with SessionLocal() as db:
-      db.add(GoalStrategy(goal_id=goal.id, strategy=strategy))
-      await db.commit()
+  content = res.choices[0].message.content or ""
+
+  strategy_text = re.sub(
+      r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+  async with SessionLocal() as db:
+    existing_strategy = await db.scalar(
+        select(GoalStrategy).where(GoalStrategy.goal_id == goal.id))
+    if existing_strategy:
+      existing_strategy.strategy = strategy_text
+    else:
+      db.add(GoalStrategy(goal_id=goal.id, strategy=strategy_text))
+    await db.commit()
