@@ -28,3 +28,7 @@ class GoalStrategyRead(BaseModel):
   id: int  
   goal_id: int
   strategy: str
+
+class GoalMetadata(BaseModel):
+  goal_id: int
+  has_strategy: bool
