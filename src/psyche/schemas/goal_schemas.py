@@ -6,6 +6,7 @@ class GoalRead(BaseModel):
   description: str
   initial_progress: str
   strategy_guidelines: str
+  active: bool
 
   model_config = ConfigDict(from_attributes=True)
 
@@ -20,6 +21,7 @@ class GoalUpdate(BaseModel):
   description: str | None = None
   initial_progress: str | None = None
   strategy_guidelines: str | None = None
+  active: bool | None = None
 
 class StrategyGenerationRequest(BaseModel):
   model_id: int

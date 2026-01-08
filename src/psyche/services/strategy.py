@@ -1,6 +1,6 @@
 import logging
 import re
-from sqlalchemy import select
+from sqlalchemy import select, update
 from openai import APIConnectionError
 from psyche.database import SessionLocal
 from psyche.models.goal_models import Goal, GoalStrategy
@@ -43,4 +43,5 @@ async def generate_strategy(id: int, request: StrategyGenerationRequest):
       existing_strategy.strategy = strategy_text
     else:
       db.add(GoalStrategy(goal_id=goal.id, strategy=strategy_text))
+    await db.execute(update(Goal).where(Goal.id == goal.id).values(active=True))
     await db.commit()
